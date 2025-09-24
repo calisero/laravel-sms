@@ -1,0 +1,42 @@
+# Dependencies
+/vendor/
+
+# Build artifacts
+/.phpunit.cache/
+.phpunit.result.cache
+
+# Ignore composer lock
+composer.lock
+
+# IDE files
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Ignore copilot instructions file
+.github/copilot-instruction.md
+
+# PHP CS Fixer cache
+/.php-cs-fixer.cache
+
+# PHPStan cache
+/phpstan.cache/
+/build/
+
+# Coverage reports
+/coverage/
+coverage.xml
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log

@@ -1,0 +1,9 @@
+parameters:
+    level: 6
+    paths:
+        - src
+    tmpDir: build/phpstan
+    ignoreErrors:
+        - '#Call to an undefined method .*::toCalisero\(\)#'
+    excludePaths:
+        - tests/Fixtures
