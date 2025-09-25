@@ -13,7 +13,7 @@ return [
 
     'base_uri' => env('CALISERO_BASE_URI', 'https://rest.calisero.ro/api/v1'),
 
-    'apiKey' => env('CALISERO_API_KEY'),
+    'api_key' => env('CALISERO_API_KEY'),
 
     'account_id' => env('CALISERO_ACCOUNT_ID'), // added for balance queries
 
