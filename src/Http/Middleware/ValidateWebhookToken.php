@@ -35,6 +35,7 @@ class ValidateWebhookToken
         if (is_string($queryToken) && '' !== $queryToken) {
             return $queryToken;
         }
+
         return null;
     }
 }

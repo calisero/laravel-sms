@@ -1,8 +1,8 @@
 <?php
 
 use Calisero\LaravelSms\Http\Controllers\WebhookController;
-use Illuminate\Support\Facades\Route;
 use Calisero\LaravelSms\Http\Middleware\ValidateWebhookToken;
+use Illuminate\Support\Facades\Route;
 
 $middlewares = config('calisero.webhook.middleware', ['api']);
 

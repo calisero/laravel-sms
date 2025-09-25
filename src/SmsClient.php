@@ -127,6 +127,7 @@ class SmsClient implements SmsClientContract
         try {
             if (Route::has('calisero.webhook')) {
                 $url = (string) route('calisero.webhook');
+
                 return $this->appendTokenIfNeeded($url);
             }
         } catch (\Throwable) {
@@ -151,7 +152,7 @@ class SmsClient implements SmsClientContract
             return $url;
         }
         $separator = str_contains($url, '?') ? '&' : '?';
+
         return $url . $separator . 'token=' . rawurlencode((string) $token);
     }
 }
-

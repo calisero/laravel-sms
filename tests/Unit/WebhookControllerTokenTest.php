@@ -58,7 +58,7 @@ class WebhookControllerTokenTest extends TestCase
 
         $this->postJson(config('calisero.webhook.path').'?token=wrong', $payload)
             ->assertStatus(401)
-            ->assertJson(['error' => 'invalid_webhook_token']);
+            ->assertJson(['error' => 'Invalid webhook token']);
 
         Event::assertNotDispatched(MessageFailed::class);
         Event::assertNotDispatched(MessageSent::class);
@@ -72,7 +72,7 @@ class WebhookControllerTokenTest extends TestCase
 
         $this->postPayload($payload)
             ->assertStatus(401)
-            ->assertJson(['error' => 'invalid_webhook_token']);
+            ->assertJson(['error' => 'Invalid webhook token']);
 
         Event::assertNotDispatched(MessageSent::class);
         Event::assertNotDispatched(MessageFailed::class);
