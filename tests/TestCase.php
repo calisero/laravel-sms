@@ -29,6 +29,6 @@ abstract class TestCase extends Orchestra
     protected function defineEnvironment($app): void
     {
         $app['config']->set('calisero.api_key', 'test-api-key');
-        $app['config']->set('calisero.webhook.secret', 'test-webhook-secret');
+        $app['config']->set('calisero.webhook.enabled', true); // ensure route loads for webhook tests
     }
 }

@@ -22,6 +22,5 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="CALISERO_API_KEY" value="test-api-key"/>
-        <env name="CALISERO_WEBHOOK_SECRET" value="test-webhook-secret"/>
     </php>
 </phpunit>

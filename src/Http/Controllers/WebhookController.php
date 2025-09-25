@@ -7,7 +7,6 @@ use Calisero\LaravelSms\Events\CreditLow;
 use Calisero\LaravelSms\Events\MessageDelivered;
 use Calisero\LaravelSms\Events\MessageFailed;
 use Calisero\LaravelSms\Events\MessageSent;
-use Calisero\LaravelSms\Http\Middleware\VerifyWebhookSignature;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -17,7 +16,6 @@ class WebhookController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(VerifyWebhookSignature::class);
     }
 
     /**

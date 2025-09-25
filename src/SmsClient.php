@@ -6,13 +6,16 @@ use Calisero\LaravelSms\Contracts\SmsClient as SmsClientContract;
 use Calisero\Sms\Dto\CreateMessageRequest;
 use Calisero\Sms\Dto\CreateMessageResponse;
 use Calisero\Sms\Dto\GetMessageResponse;
-use Calisero\Sms\SmsClient as SdkSmsClient;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 
 class SmsClient implements SmsClientContract
 {
+    /**
+     * @param object $client Expected to expose messages() and accounts() accessors similar to the Calisero SDK.
+     */
     public function __construct(
-        private SdkSmsClient $client
+        private object $client
     ) {
     }
 
@@ -45,6 +48,10 @@ class SmsClient implements SmsClientContract
         $validity = $params['validity'] ?? null;
         $scheduleAt = $params['schedule_at'] ?? $params['scheduleAt'] ?? null;
         $callbackUrl = $params['callback_url'] ?? $params['callbackUrl'] ?? null;
+        // Auto-inject callback URL if enabled and none explicitly provided
+        if ($callbackUrl === null && $this->shouldInjectCallback()) {
+            $callbackUrl = $this->buildCallbackUrl();
+        }
         $sender = $params['from'] ?? null;
 
         $request = new CreateMessageRequest(
@@ -108,5 +115,36 @@ class SmsClient implements SmsClientContract
     public function getMessageStatus(string $messageId): GetMessageResponse
     {
         return $this->client->messages()->get($messageId);
+    }
+
+    private function shouldInjectCallback(): bool
+    {
+        return (bool) config('calisero.webhook.enabled') && (bool) config('calisero.webhook.path');
+    }
+
+    private function buildCallbackUrl(): string
+    {
+        try {
+            if (Route::has('calisero.webhook')) {
+                return (string) route('calisero.webhook');
+            }
+        } catch (\Throwable) {
+            // fall back below
+        }
+
+        $path = ltrim((string) config('calisero.webhook.path'), '/');
+        $base = rtrim((string) config('app.url'), '/');
+        if ($base === '') {
+            // As a last resort rely on URL helper if app.url not set
+            try {
+                if (function_exists('url')) {
+                    return (string) url($path);
+                }
+            } catch (\Throwable) {
+                // ignore
+            }
+        }
+
+        return $base !== '' ? $base . '/' . $path : '/' . $path;
     }
 }

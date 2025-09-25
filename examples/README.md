@@ -16,8 +16,8 @@ This directory contains focused, copy‑paste friendly examples for common scena
 3. Set required ENV variables in `.env`:
    ```env
    CALISERO_API_KEY=your-api-key
-   CALISERO_WEBHOOK_SECRET=your-webhook-secret   # if using webhooks
    CALISERO_WEBHOOK_PATH=calisero/webhook        # optional override
+   CALISERO_WEBHOOK_ENABLED=true                 # enable webhook route & callback injection
    CALISERO_CREDIT_LOW=500                       # optional
    CALISERO_CREDIT_CRITICAL=100                  # optional
    ```
@@ -86,4 +86,3 @@ These files are *not* automatically autoloaded. For experimentation you can:
 Open an issue or discussion in the main repository with the scenario you’d like documented.
 
 Happy building! 🚀
-

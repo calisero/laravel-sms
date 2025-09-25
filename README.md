@@ -10,7 +10,7 @@ A first-class Laravel 12 package that wraps the [Calisero PHP SDK](https://githu
 
 - 🚀 **Laravel 12** ready with full support for the latest features
 - 📱 **Easy SMS sending** via Facade, Notification channels, or direct client usage
-- 🔐 **Webhook handling** with automatic signature verification
+- 🔐 **Webhook handling**
 - ✅ **Validation rules** for phone numbers (E.164) and sender IDs
 - 🎯 **Queue support** for reliable message delivery
 - 🧪 **Artisan commands** for testing and development
@@ -44,8 +44,8 @@ CALISERO_RETRIES=5
 CALISERO_RETRY_BACKOFF_MS=200
 
 # Optional: Webhook configuration
-CALISERO_WEBHOOK_SECRET=your-webhook-secret
 CALISERO_WEBHOOK_PATH=calisero/webhook
+CALISERO_WEBHOOK_ENABLED=true
 ```
 
 ## Usage
@@ -153,28 +153,13 @@ class SendSmsRequest extends FormRequest
 
 ### Webhook Handling
 
-To handle delivery status webhooks, first configure your webhook secret in the environment, then listen for the events:
+Enable webhooks by setting `CALISERO_WEBHOOK_ENABLED=true`. The package will register a POST endpoint at `/calisero/webhook` (or your configured `CALISERO_WEBHOOK_PATH`). The endpoint is intentionally unauthenticated—if you need extra protection, wrap it in custom middleware (token header, IP allow‑list, etc.).
 
+Listen for the events:
 ```php
-use Calisero\LaravelSms\Events\MessageSent;
-use Calisero\LaravelSms\Events\MessageDelivered;
-use Calisero\LaravelSms\Events\MessageFailed;
-use Illuminate\Support\Facades\Event;
-
-Event::listen(MessageSent::class, function (MessageSent $event) {
-    // Message accepted / sent by provider (not yet delivered)
-    $data = $event->messageData;
-});
-
-Event::listen(MessageDelivered::class, function (MessageDelivered $event) {
-    // Handle successful final delivery
-    $data = $event->messageData;
-});
-
-Event::listen(MessageFailed::class, function (MessageFailed $event) {
-    // Handle delivery failure
-    $data = $event->messageData;
-});
+Event::listen(MessageSent::class, fn (MessageSent $e) => ...);
+Event::listen(MessageDelivered::class, fn (MessageDelivered $e) => ...);
+Event::listen(MessageFailed::class, fn (MessageFailed $e) => ...);
 ```
 
 Statuses currently emitted (lifecycle):
@@ -212,7 +197,23 @@ When the same message is later delivered you will receive another webhook with:
 ```
 A failed attempt would have `"status": "failed"` and usually a `deliveredAt` of `null`.
 
-The webhook endpoint will be automatically registered at `/calisero/webhook` (or your configured path) when a webhook secret is set.
+#### Automatic callback_url Injection
+If `CALISERO_WEBHOOK_ENABLED=true`, every `sendSms()` call **without** an explicit `callback_url` (or `callbackUrl`) automatically includes one pointing to the named route `calisero.webhook` (if registered) or a URL built from `app.url` + the configured path.  
+To override, supply your own `callback_url` parameter.  
+To disable injection, set `CALISERO_WEBHOOK_ENABLED=false` or omit the env variable.
+
+Edge cases:
+- If `app.url` is not set and the route helper fails, a root-relative path like `/calisero/webhook` is used.
+- Passing either `callback_url` or `callbackUrl` prevents injection.
+
+Example (override):
+```php
+Calisero::sendSms([
+    'to' => '+1234567890',
+    'text' => 'Custom callback',
+    'callback_url' => 'https://example.com/custom-hook',
+]);
+```
 
 ### Artisan Commands
 
@@ -220,12 +221,6 @@ The webhook endpoint will be automatically registered at `/calisero/webhook` (or
 
 ```bash
 php artisan calisero:sms:test +1234567890 --from="MyApp" --text="Test message"
-```
-
-#### Verify webhook signatures (for development)
-
-```bash
-php artisan calisero:webhook:verify signature-here --payload='{"test": "data"}'
 ```
 
 ## Advanced Configuration
@@ -251,7 +246,7 @@ Approval Guidelines:
 - Avoid trademarks you do not own.
 
 How to Request Approval:
-1. Log in to your Calisero dashboard (https://calisero.ro) and navigate to Sender IDs
+1. Log in to your Calisero dashboard (https) and navigate to Sender IDs
 2. Submit each desired sender (case‑sensitive) with a brief business justification.
 3. Wait for confirmation before deploying to production.
 

@@ -14,20 +14,9 @@ use Illuminate\Support\Facades\Event;
 
 class WebhookControllerTest extends TestCase
 {
-    private function signatureFor(array $payload): string
-    {
-        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
-
-        return hash_hmac('sha256', (string) $json, config('calisero.webhook.secret'));
-    }
-
     private function postPayload(array $payload)
     {
-        $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $signature = $this->signatureFor($payload);
-
-        return $this->withHeader('X-Webhook-Signature', $signature)
-            ->postJson(config('calisero.webhook.path'), json_decode((string) $json, true));
+        return $this->postJson(config('calisero.webhook.path'), $payload);
     }
 
     public function test_it_dispatches_delivered_event(): void

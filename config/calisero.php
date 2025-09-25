@@ -13,7 +13,7 @@ return [
 
     'base_uri' => env('CALISERO_BASE_URI', 'https://rest.calisero.ro/api/v1'),
 
-    'api_key' => env('CALISERO_API_KEY'),
+    'apiKey' => env('CALISERO_API_KEY'),
 
     'account_id' => env('CALISERO_ACCOUNT_ID'), // added for balance queries
 
@@ -30,15 +30,15 @@ return [
     | Webhook Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure webhook handling for delivery status updates.
-    | Set the webhook secret in your environment file.
+    | Enable webhooks for delivery status & balance events. If enabled, the
+    | route at the configured path will be registered without authentication.
     |
     */
 
     'webhook' => [
-        'secret' => env('CALISERO_WEBHOOK_SECRET'),
         'path' => env('CALISERO_WEBHOOK_PATH', 'calisero/webhook'),
         'middleware' => ['api'],
+        'enabled' => env('CALISERO_WEBHOOK_ENABLED', false),
     ],
 
     /*

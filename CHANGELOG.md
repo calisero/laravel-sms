@@ -3,28 +3,42 @@
 All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
+- (no changes yet)
 
+## [1.0.1] - 2025-09-25
+### Removed
+- Signature-based webhook verification (middleware & HMAC secret) – webhook endpoint is now unauthenticated by default.
+- `calisero:webhook:verify` artisan command.
+- Webhook secret / verify configuration keys.
+
+### Added
+- Automatic `callback_url` injection when `CALISERO_WEBHOOK_ENABLED=true` and no explicit callback provided.
+- Credit monitoring events: `CreditLow`, `CreditCritical` with configurable thresholds.
+- `MessageSent` event (lifecycle expansion: sent → delivered/failed).
+- Multilingual validation messages (English & Romanian) – publishable via `calisero-translations` tag.
+- Configurable webhook enabling flag (`CALISERO_WEBHOOK_ENABLED`).
+
+### Changed
+- Webhook routes now register only when explicitly enabled (no secret required).
+- `SmsClient` sends structured DTO requests and supports snake_case / camelCase optional parameters.
+- Updated README & examples to reflect removal of signature verification and new behaviors.
+- Improved type declarations for `SmsClient` contract & implementation.
+
+### Fixed
+- Normalized parameter naming (`schedule_at`, `callback_url`) in notification channel.
+- Removed stale comments and deprecated code blocks prior to publication.
+
+### Notes
+- This release includes a breaking change if you depended on prior signature verification; add your own middleware (token/IP allow‑list) if needed.
+
+## [1.0.0] - 2025-09-??
 ### Added
 - Initial release
 - Laravel 12.x support
 - SMS sending via Facade, Notification channel, and direct client
-- Webhook handling with signature verification
+- Webhook handling (basic, unauthenticated in current revision)
 - Validation rules for phone numbers (E.164) and sender IDs
-- Artisan commands for testing and webhook verification
+- Artisan command for test SMS sending
 - Comprehensive test suite with Orchestra Testbench
 - GitHub Actions CI pipeline
-- PHPStan level 8 static analysis
-- PHP CS Fixer code formatting
-
-### Features
-- **Service Container Integration**: Automatic binding and registration
-- **Queue Support**: Full support for Laravel's queue system
-- **Event System**: Webhook events for message delivery status
-- **Logging**: Configurable logging with request/response details
-- **Error Handling**: Proper exception handling and mapping
-- **Configuration**: Publishable config with environment variable support
-
-### Requirements
-- PHP 8.2 - 8.4
-- Laravel 12.x
-- Calisero PHP SDK ^2.0
+- PHPStan static analysis & PHP CS Fixer formatting
