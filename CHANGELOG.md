@@ -5,6 +5,36 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 ## [Unreleased]
 - (no changes yet)
 
+## [1.0.3] - 2025-09-25
+### Added
+- Full PHP 8.4 compatibility alongside existing PHP 8.2 and 8.3 support
+- Enhanced memory management for PHP CS Fixer operations
+- Improved CI/CD pipeline with comprehensive PHP version matrix testing
+
+### Changed
+- Updated PHP version constraint to `^8.2` (supports 8.2, 8.3, and 8.4)
+- Optimized PHP CS Fixer configuration with proper memory allocation
+- Enhanced GitHub Actions workflow to test against PHP 8.2, 8.3, and 8.4
+- Improved webhook token validation test coverage and error messages
+- Updated composer scripts for better performance and reliability
+
+### Fixed
+- Resolved PHP CS Fixer memory exhaustion issues on larger codebases
+- Fixed webhook token validation test assertions to match actual error responses
+- Cleaned up empty test files that were causing PHPUnit warnings
+- Improved code formatting consistency across all source files
+
+### Technical
+- Updated `composer.json` to support latest PHP versions while maintaining Laravel 12.x compatibility
+- Enhanced CI pipeline stability with proper dependency version constraints
+- Improved development workflow with optimized quality assurance scripts
+- Added proper timeout handling for long-running CS Fixer operations
+
+### Requirements
+- PHP 8.2, 8.3, or 8.4
+- Laravel 12.x
+- Calisero PHP SDK ^2.0
+
 ## [1.0.2] - 2025-09-25
 ### Added
 - Optional webhook token authentication: set `CALISERO_WEBHOOK_TOKEN=your-secret` (config: `calisero.webhook.token`) to require a matching `?token=your-secret` query parameter on the webhook route. Middleware `ValidateWebhookToken` is automatically applied only when a token is configured, preserving previous unauthenticated behavior when absent.
