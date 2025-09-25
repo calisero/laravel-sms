@@ -5,6 +5,13 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 ## [Unreleased]
 - (no changes yet)
 
+## [1.0.2] - 2025-09-25
+### Added
+- Optional webhook token authentication: set `CALISERO_WEBHOOK_TOKEN=your-secret` (config: `calisero.webhook.token`) to require a matching `?token=your-secret` query parameter on the webhook route. Middleware `ValidateWebhookToken` is automatically applied only when a token is configured, preserving previous unauthenticated behavior when absent.
+
+### Notes
+- Enables lightweight shared-secret protection without reintroducing the removed HMAC signature scheme.
+
 ## [1.0.1] - 2025-09-25
 ### Removed
 - Signature-based webhook verification (middleware & HMAC secret) – webhook endpoint is now unauthenticated by default.
