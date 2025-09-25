@@ -36,16 +36,30 @@ php artisan vendor:publish --provider="Calisero\\LaravelSms\\ServiceProvider" --
 Add your Calisero API credentials to your `.env` file:
 
 ```env
+# Required: API Configuration
 CALISERO_API_KEY=your-api-key-here
 CALISERO_BASE_URI=https://rest.calisero.ro/api/v1
+
+# Optional: Account ID for balance queries
+CALISERO_ACCOUNT_ID=your-account-id
+
+# Optional: Connection Settings
 CALISERO_TIMEOUT=10.0
 CALISERO_CONNECT_TIMEOUT=3.0
 CALISERO_RETRIES=5
 CALISERO_RETRY_BACKOFF_MS=200
 
-# Optional: Webhook configuration
-CALISERO_WEBHOOK_PATH=calisero/webhook
+# Optional: Webhook Configuration
 CALISERO_WEBHOOK_ENABLED=true
+CALISERO_WEBHOOK_PATH=calisero/webhook
+CALISERO_WEBHOOK_TOKEN=your-shared-secret
+
+# Optional: Credit Monitoring
+CALISERO_CREDIT_LOW=500
+CALISERO_CREDIT_CRITICAL=100
+
+# Optional: Logging
+CALISERO_LOG_CHANNEL=default
 ```
 
 ## Usage
@@ -255,6 +269,24 @@ Calisero::sendSms([
 ```bash
 php artisan calisero:sms:test +1234567890 --from="MyApp" --text="Test message"
 ```
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CALISERO_API_KEY` | **Yes** | - | Your Calisero API key from the dashboard |
+| `CALISERO_BASE_URI` | No | `https://rest.calisero.ro/api/v1` | Calisero API base URL |
+| `CALISERO_ACCOUNT_ID` | No | - | Your account ID for balance queries |
+| `CALISERO_TIMEOUT` | No | `10.0` | Request timeout in seconds |
+| `CALISERO_CONNECT_TIMEOUT` | No | `3.0` | Connection timeout in seconds |
+| `CALISERO_RETRIES` | No | `5` | Number of retry attempts |
+| `CALISERO_RETRY_BACKOFF_MS` | No | `200` | Backoff delay between retries (ms) |
+| `CALISERO_WEBHOOK_ENABLED` | No | `false` | Enable webhook handling |
+| `CALISERO_WEBHOOK_PATH` | No | `calisero/webhook` | Webhook endpoint path |
+| `CALISERO_WEBHOOK_TOKEN` | No | - | Shared secret for webhook authentication |
+| `CALISERO_CREDIT_LOW` | No | - | Credit threshold for low balance alerts |
+| `CALISERO_CREDIT_CRITICAL` | No | - | Credit threshold for critical balance alerts |
+| `CALISERO_LOG_CHANNEL` | No | `default` | Laravel log channel to use |
 
 ## Advanced Configuration
 

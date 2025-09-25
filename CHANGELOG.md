@@ -5,6 +5,24 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 ## [Unreleased]
 - (no changes yet)
 
+## [1.0.4] - 2025-09-25
+### Documentation
+- Added comprehensive environment variables reference table in README
+- Enhanced installation and configuration documentation with complete variable listing
+- Improved README structure with clearer sections for all configuration options
+- Added detailed descriptions for all available environment variables
+- Organized configuration variables by category (Required, Connection, Webhook, Monitoring, Logging)
+
+### Added
+- Complete environment variables documentation in README.md
+- Configuration reference table with descriptions and default values
+- Enhanced setup instructions with all available options
+
+### Improved
+- Better organization of configuration documentation
+- Clearer categorization of environment variables
+- More comprehensive setup guide for new users
+
 ## [1.0.3] - 2025-09-25
 ### Added
 - Full PHP 8.4 compatibility alongside existing PHP 8.2 and 8.3 support
