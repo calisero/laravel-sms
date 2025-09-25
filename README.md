@@ -153,7 +153,40 @@ class SendSmsRequest extends FormRequest
 
 ### Webhook Handling
 
-Enable webhooks by setting `CALISERO_WEBHOOK_ENABLED=true`. The package will register a POST endpoint at `/calisero/webhook` (or your configured `CALISERO_WEBHOOK_PATH`). The endpoint is intentionally unauthenticated—if you need extra protection, wrap it in custom middleware (token header, IP allow‑list, etc.).
+Enable webhooks by setting `CALISERO_WEBHOOK_ENABLED=true`. The package will register a POST endpoint at `/calisero/webhook` (or your configured `CALISERO_WEBHOOK_PATH`).
+
+#### Securing the Webhook (Query Token)
+If you also set `CALISERO_WEBHOOK_TOKEN=your-shared-secret`, the package will:
+- Automatically append `?token=your-shared-secret` to the injected `callback_url` sent to Calisero (only when you did not supply a custom `callback_url`).
+- Register a middleware that rejects any incoming webhook request not containing the correct `token` query parameter.
+
+Requirements when token security is enabled:
+- Each webhook request from Calisero must include the query parameter `token` with the exact configured value.
+- If you manually override `callback_url`, you are responsible for including the `?token=...` segment yourself.
+- If your explicit URL already contains a `token=` parameter, the library will not modify it.
+
+Environment example:
+```env
+CALISERO_WEBHOOK_ENABLED=true
+CALISERO_WEBHOOK_PATH=calisero/webhook
+CALISERO_WEBHOOK_TOKEN=super-secret-value
+```
+
+Example of explicit override (token already present, no modification by the library):
+```php
+Calisero::sendSms([
+    'to' => '+1234567890',
+    'text' => 'Custom secured callback',
+    'callback_url' => 'https://example.com/custom-hook?token=' . urlencode(config('calisero.webhook.token')),
+]);
+```
+
+Rotation tip: rotate the token by
+1. Adding a temporary second endpoint (optional) or a maintenance window.
+2. Updating `CALISERO_WEBHOOK_TOKEN`.
+3. Redeploying and updating the callback URL in Calisero (or sending a new message to propagate the injected URL).
+
+If you leave `CALISERO_WEBHOOK_TOKEN` empty, no token middleware is attached and the endpoint is publicly accessible (POST only). Consider other controls (IP allow-list, WAF) if you opt out of the token.
 
 Listen for the events:
 ```php

@@ -22,7 +22,7 @@ class ValidateWebhookToken
 
         if (! is_string($provided) || ! hash_equals($expected, $provided)) {
             return response()->json([
-                'error' => 'invalid_webhook_token',
+                'error' => 'Invalid webhook token',
             ], 401);
         }
 

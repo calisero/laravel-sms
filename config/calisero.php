@@ -39,6 +39,7 @@ return [
         'path' => env('CALISERO_WEBHOOK_PATH', 'calisero/webhook'),
         'middleware' => ['api'],
         'enabled' => env('CALISERO_WEBHOOK_ENABLED', false),
+        'token' => env('CALISERO_WEBHOOK_TOKEN'),
     ],
 
     /*
