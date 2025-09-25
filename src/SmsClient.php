@@ -126,7 +126,8 @@ class SmsClient implements SmsClientContract
     {
         try {
             if (Route::has('calisero.webhook')) {
-                return (string) route('calisero.webhook');
+                $url = (string) route('calisero.webhook');
+                return $this->appendTokenIfNeeded($url);
             }
         } catch (\Throwable) {
             // fall back below
@@ -134,17 +135,23 @@ class SmsClient implements SmsClientContract
 
         $path = ltrim((string) config('calisero.webhook.path'), '/');
         $base = rtrim((string) config('app.url'), '/');
-        if ('' === $base) {
-            // As a last resort rely on URL helper if app.url not set
-            try {
-                if (function_exists('url')) {
-                    return (string) url($path);
-                }
-            } catch (\Throwable) {
-                // ignore
-            }
-        }
+        $url = '' !== $base ? $base . '/' . $path : '/' . $path;
 
-        return '' !== $base ? $base . '/' . $path : '/' . $path;
+        return $this->appendTokenIfNeeded($url);
+    }
+
+    private function appendTokenIfNeeded(string $url): string
+    {
+        $token = config('calisero.webhook.token');
+        if (null === $token || '' === $token) {
+            return $url;
+        }
+        // Do not append if already present
+        if (str_contains($url, 'token=')) {
+            return $url;
+        }
+        $separator = str_contains($url, '?') ? '&' : '?';
+        return $url . $separator . 'token=' . rawurlencode((string) $token);
     }
 }
+

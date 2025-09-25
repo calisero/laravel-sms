@@ -79,6 +79,40 @@ class CallbackUrlInjectionTest extends TestCase
         $payload = $this->fakeSdk->messagesService->lastPayload;
         $this->assertSame('https://override.test/callback', $payload['callback_url']);
     }
+
+    public function test_callback_url_injection_appends_token_when_configured(): void
+    {
+        config()->set('calisero.webhook.token', 'abc123');
+        /** @var SmsClientContract $client */
+        $client = $this->app->make(SmsClientContract::class);
+
+        $client->sendSms([
+            'to' => '+12345678904',
+            'text' => 'Token test',
+        ]);
+
+        $payload = $this->fakeSdk->messagesService->lastPayload;
+        $expectedBase = route('calisero.webhook');
+        $this->assertArrayHasKey('callback_url', $payload);
+        $this->assertSame($expectedBase . '?token=abc123', $payload['callback_url']);
+    }
+
+    public function test_explicit_callback_url_with_existing_token_not_modified(): void
+    {
+        config()->set('calisero.webhook.token', 'abc123');
+        /** @var SmsClientContract $client */
+        $client = $this->app->make(SmsClientContract::class);
+
+        $explicit = 'https://override.test/callback?token=zzz';
+        $client->sendSms([
+            'to' => '+12345678905',
+            'text' => 'Token explicit test',
+            'callback_url' => $explicit,
+        ]);
+
+        $payload = $this->fakeSdk->messagesService->lastPayload;
+        $this->assertSame($explicit, $payload['callback_url']);
+    }
 }
 
 // --- Test Doubles ---------------------------------------------------------
