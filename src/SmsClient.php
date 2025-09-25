@@ -39,7 +39,7 @@ class SmsClient implements SmsClientContract
         $recipient = (string) ($params['to'] ?? '');
         $body = (string) ($params['text'] ?? '');
 
-        if ($recipient === '' || $body === '') {
+        if ('' === $recipient || '' === $body) {
             throw new \InvalidArgumentException('Both "to" and "text" parameters are required');
         }
 
@@ -49,7 +49,7 @@ class SmsClient implements SmsClientContract
         $scheduleAt = $params['schedule_at'] ?? $params['scheduleAt'] ?? null;
         $callbackUrl = $params['callback_url'] ?? $params['callbackUrl'] ?? null;
         // Auto-inject callback URL if enabled and none explicitly provided
-        if ($callbackUrl === null && $this->shouldInjectCallback()) {
+        if (null === $callbackUrl && $this->shouldInjectCallback()) {
             $callbackUrl = $this->buildCallbackUrl();
         }
         $sender = $params['from'] ?? null;
@@ -57,11 +57,11 @@ class SmsClient implements SmsClientContract
         $request = new CreateMessageRequest(
             recipient: $recipient,
             body: $body,
-            visibleBody: $visibleBody !== null ? (string) $visibleBody : null,
-            validity: $validity !== null ? (int) $validity : null,
-            scheduleAt: $scheduleAt !== null ? (string) $scheduleAt : null,
-            callbackUrl: $callbackUrl !== null ? (string) $callbackUrl : null,
-            sender: $sender !== null ? (string) $sender : null,
+            visibleBody: null !== $visibleBody ? (string) $visibleBody : null,
+            validity: null !== $validity ? (int) $validity : null,
+            scheduleAt: null !== $scheduleAt ? (string) $scheduleAt : null,
+            callbackUrl: null !== $callbackUrl ? (string) $callbackUrl : null,
+            sender: null !== $sender ? (string) $sender : null,
         );
 
         try {
@@ -134,7 +134,7 @@ class SmsClient implements SmsClientContract
 
         $path = ltrim((string) config('calisero.webhook.path'), '/');
         $base = rtrim((string) config('app.url'), '/');
-        if ($base === '') {
+        if ('' === $base) {
             // As a last resort rely on URL helper if app.url not set
             try {
                 if (function_exists('url')) {
@@ -145,6 +145,6 @@ class SmsClient implements SmsClientContract
             }
         }
 
-        return $base !== '' ? $base . '/' . $path : '/' . $path;
+        return '' !== $base ? $base . '/' . $path : '/' . $path;
     }
 }

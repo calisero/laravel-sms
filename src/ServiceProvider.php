@@ -76,7 +76,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     private function registerWebhookRoutes(): void
     {
-        if (config('calisero.webhook.enabled') === true) {
+        if (true === config('calisero.webhook.enabled')) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/webhooks.php');
         }
     }

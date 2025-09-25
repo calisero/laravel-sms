@@ -41,24 +41,24 @@ class WebhookController extends Controller
 
         $status = $payload['status'] ?? null;
 
-        if ($status === 'delivered') {
+        if ('delivered' === $status) {
             Event::dispatch(new MessageDelivered($payload));
-        } elseif ($status === 'failed') {
+        } elseif ('failed' === $status) {
             Event::dispatch(new MessageFailed($payload));
-        } elseif ($status === 'sent') {
+        } elseif ('sent' === $status) {
             Event::dispatch(new MessageSent($payload));
         }
 
         // Credit threshold monitoring (optional)
         if (array_key_exists('remainingBalance', $payload)) {
             $remaining = $this->toFloatOrNull($payload['remainingBalance']);
-            if ($remaining !== null) {
+            if (null !== $remaining) {
                 $critical = $this->configFloat('calisero.credit.critical_threshold');
                 $low = $this->configFloat('calisero.credit.low_threshold');
 
-                if ($critical !== null && $remaining <= $critical) {
+                if (null !== $critical && $remaining <= $critical) {
                     Event::dispatch(new CreditCritical($remaining));
-                } elseif ($low !== null && $remaining <= $low) { // only if not critical
+                } elseif (null !== $low && $remaining <= $low) { // only if not critical
                     Event::dispatch(new CreditLow($remaining));
                 }
             }
@@ -79,7 +79,7 @@ class WebhookController extends Controller
     private function configFloat(string $key): ?float
     {
         $val = config($key);
-        if ($val === null || $val === '') {
+        if (null === $val || '' === $val) {
             return null;
         }
 
