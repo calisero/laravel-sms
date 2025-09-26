@@ -1,7 +1,10 @@
 # Laravel SMS Package for Calisero
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
-[![CI](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml)
+[![tests](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg?style=flat-square)](https://phpstan.org)
+[![License](https://img.shields.io/packagist/l/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
+[![Tests](https://img.shields.io/github/actions/workflow/status/calisero/laravel-sms/ci.yml?branch=main&label=tests&style=flat-square)](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
 
 A first-class Laravel 12 package that wraps the [Calisero PHP SDK](https://github.com/calisero/calisero-php) and provides idiomatic Laravel features for sending SMS messages through the Calisero API.
