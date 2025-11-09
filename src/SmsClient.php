@@ -145,37 +145,32 @@ class SmsClient implements SmsClientContract
     public function sendVerification(array $params): mixed
     {
         try {
-            $requestData = [
-                'phone' => $params['to'] ?? $params['phone'],
-            ];
+            $phone = $params['to'] ?? $params['phone'];
+            $brand = $params['brand'] ?? null;
+            $template = $params['template'] ?? null;
+            $expiresIn = $params['expires_in'] ?? $params['expiresIn'] ?? null;
 
-            // Either brand OR template is required
-            if (isset($params['brand'])) {
-                $requestData['brand'] = $params['brand'];
-            }
+            $request = new \Calisero\Sms\Dto\CreateVerificationRequest(
+                phone: $phone,
+                brand: $brand,
+                template: $template,
+                expiresIn: null !== $expiresIn ? (int) $expiresIn : null
+            );
 
-            if (isset($params['template'])) {
-                $requestData['template'] = $params['template'];
-            }
-
-            if (isset($params['expires_in']) || isset($params['expiresIn'])) {
-                $requestData['expires_in'] = $params['expires_in'] ?? $params['expiresIn'];
-            }
-
-            $response = $this->client->sendVerification($requestData);
+            $response = $this->client->verifications()->create($request);
 
             Log::channel(config('calisero.logging.channel', 'default'))
                 ->info('Verification code sent', [
-                    'phone' => $requestData['phone'],
-                    'has_brand' => isset($params['brand']),
-                    'has_template' => isset($params['template']),
+                    'phone' => $phone,
+                    'has_brand' => null !== $brand,
+                    'has_template' => null !== $template,
                 ]);
 
             return $response;
         } catch (\Exception $e) {
             Log::channel(config('calisero.logging.channel', 'default'))
                 ->error('Failed to send verification code', [
-                    'phone' => $requestData['phone'] ?? $params['to'] ?? null,
+                    'phone' => $params['to'] ?? $params['phone'] ?? null,
                     'error' => $e->getMessage(),
                 ]);
 
@@ -192,22 +187,27 @@ class SmsClient implements SmsClientContract
     public function checkVerification(array $params): mixed
     {
         try {
-            $response = $this->client->checkVerification([
-                'phone' => $params['to'] ?? $params['phone'],
-                'code' => $params['code'],
-            ]);
+            $phone = $params['to'] ?? $params['phone'];
+            $code = $params['code'];
+
+            $request = new \Calisero\Sms\Dto\VerificationCheckRequest(
+                phone: $phone,
+                code: $code
+            );
+
+            $response = $this->client->verifications()->validate($request);
 
             Log::channel(config('calisero.logging.channel', 'default'))
                 ->info('Verification code checked', [
-                    'phone' => $params['to'] ?? $params['phone'],
-                    'status' => $response->status ?? 'unknown',
+                    'phone' => $phone,
+                    'status' => $response->getData()->getStatus(),
                 ]);
 
             return $response;
         } catch (\Exception $e) {
             Log::channel(config('calisero.logging.channel', 'default'))
                 ->error('Failed to check verification code', [
-                    'phone' => $params['to'] ?? $params['phone'],
+                    'phone' => $params['to'] ?? $params['phone'] ?? null,
                     'error' => $e->getMessage(),
                 ]);
 
