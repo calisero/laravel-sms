@@ -2,7 +2,9 @@
 
 namespace Calisero\LaravelSms;
 
+use Calisero\LaravelSms\Console\Commands\CheckVerificationCommand;
 use Calisero\LaravelSms\Console\Commands\SendTestSmsCommand;
+use Calisero\LaravelSms\Console\Commands\SendVerificationCommand;
 use Calisero\LaravelSms\Contracts\SmsClient as SmsClientContract;
 use Calisero\LaravelSms\Notification\SmsChannel;
 use Illuminate\Notifications\ChannelManager;
@@ -56,9 +58,9 @@ class ServiceProvider extends BaseServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                Console\Commands\SendTestSmsCommand::class,
-                Console\Commands\SendVerificationCommand::class,
-                Console\Commands\CheckVerificationCommand::class,
+                SendTestSmsCommand::class,
+                SendVerificationCommand::class,
+                CheckVerificationCommand::class,
             ]);
         }
     }

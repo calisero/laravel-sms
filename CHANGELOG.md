@@ -4,6 +4,26 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-11-09
+
+### Fixed
+- **Verification methods** now correctly use SDK's `verifications()->create()` and `verifications()->validate()` methods
+- Fixed `sendVerification()` to properly use `CreateVerificationRequest` DTO
+- Fixed `checkVerification()` to properly use `VerificationCheckRequest` DTO and return `GetVerificationResponse`
+- Updated test mocks to properly test verification functionality with correct SDK method calls
+- Removed unused import in `ServiceProvider` to fix PHP CS Fixer violations
+
+### Changed
+- Improved verification method implementations to align with Calisero PHP SDK v2.x architecture
+- Enhanced test coverage for verification methods with proper mocking of SDK services
+- Better error handling in verification methods with consistent logging
+
+### Technical
+- Tests now properly mock `\Calisero\Sms\Services\VerificationService` for verification operations
+- Verification methods now return proper DTO responses instead of raw arrays
+- All tests passing (28 tests, 94 assertions)
+- Code style compliance verified with PHP CS Fixer
+
 ## [1.1.0] - 2025-10-09
 
 ### Added
