@@ -56,7 +56,9 @@ class ServiceProvider extends BaseServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                SendTestSmsCommand::class,
+                Console\Commands\SendTestSmsCommand::class,
+                Console\Commands\SendVerificationCommand::class,
+                Console\Commands\CheckVerificationCommand::class,
             ]);
         }
     }
