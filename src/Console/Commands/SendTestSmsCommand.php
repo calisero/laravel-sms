@@ -3,14 +3,14 @@
 namespace Calisero\LaravelSms\Console\Commands;
 
 use Calisero\LaravelSms\Contracts\SmsClient;
-use Illuminate\Console\Command;
-use Calisero\Sms\Exceptions\ValidationException;
-use Calisero\Sms\Exceptions\RateLimitedException;
 use Calisero\Sms\Exceptions\ApiException;
-use Calisero\Sms\Exceptions\UnauthorizedException;
 use Calisero\Sms\Exceptions\ForbiddenException;
 use Calisero\Sms\Exceptions\NotFoundException;
+use Calisero\Sms\Exceptions\RateLimitedException;
 use Calisero\Sms\Exceptions\ServerException;
+use Calisero\Sms\Exceptions\UnauthorizedException;
+use Calisero\Sms\Exceptions\ValidationException;
+use Illuminate\Console\Command;
 
 class SendTestSmsCommand extends Command
 {
@@ -54,11 +54,21 @@ class SendTestSmsCommand extends Command
             'to' => $to,
             'text' => $text,
         ];
-        if ($from) { $params['from'] = (string) $from; }
-        if ($visibleBody) { $params['visible_body'] = (string) $visibleBody; }
-        if ($validity !== null) { $params['validity'] = (int) $validity; }
-        if ($scheduleAt) { $params['schedule_at'] = (string) $scheduleAt; }
-        if ($callbackUrl) { $params['callback_url'] = (string) $callbackUrl; }
+        if ($from) {
+            $params['from'] = (string) $from;
+        }
+        if ($visibleBody) {
+            $params['visible_body'] = (string) $visibleBody;
+        }
+        if ($validity !== null) {
+            $params['validity'] = (int) $validity;
+        }
+        if ($scheduleAt) {
+            $params['schedule_at'] = (string) $scheduleAt;
+        }
+        if ($callbackUrl) {
+            $params['callback_url'] = (string) $callbackUrl;
+        }
 
         try {
             $response = $client->sendSms($params);
@@ -86,33 +96,42 @@ class SendTestSmsCommand extends Command
         } catch (ValidationException $e) {
             $this->error('✗ API validation error: '.$e->getMessage());
             $errors = $e->getValidationErrors();
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $rows = [];
                 foreach ($errors as $field => $messages) {
-                    if (is_array($messages)) { $messages = implode('; ', array_map('strval', $messages)); }
+                    if (is_array($messages)) {
+                        $messages = implode('; ', array_map('strval', $messages));
+                    }
                     $rows[] = [$field, (string) $messages];
                 }
                 $this->table(['Field', 'Errors'], $rows);
             }
+
             return self::FAILURE;
         } catch (RateLimitedException $e) {
             $this->error('✗ Rate limited: '.$e->getMessage());
             $this->line('Retry after: '.($e->getRetryAfter() ?? 'unknown').'s');
+
             return self::FAILURE;
         } catch (UnauthorizedException|ForbiddenException $e) {
             $this->error('✗ Auth/permission error: '.$e->getMessage());
+
             return self::FAILURE;
         } catch (NotFoundException $e) {
             $this->error('✗ Resource not found: '.$e->getMessage());
+
             return self::FAILURE;
         } catch (ServerException $e) {
             $this->error('✗ Server error: '.$e->getMessage());
+
             return self::FAILURE;
         } catch (ApiException $e) {
             $this->error('✗ API error: '.$e->getMessage().' (status: '.$e->getStatusCode().', request: '.$e->getRequestId().')');
+
             return self::FAILURE;
         } catch (\Throwable $e) {
             $this->error('✗ Unexpected failure: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }

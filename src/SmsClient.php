@@ -62,7 +62,7 @@ class SmsClient implements SmsClientContract
             callbackUrl: null !== $callbackUrl ? (string) $callbackUrl : null,
             sender: null !== $sender ? (string) $sender : null,
         );
-        
+
         return $this->client->messages()->create($request);
     }
 
