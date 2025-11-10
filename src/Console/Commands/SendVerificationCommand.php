@@ -3,67 +3,105 @@
 namespace Calisero\LaravelSms\Console\Commands;
 
 use Calisero\LaravelSms\Facades\Calisero;
+use Calisero\Sms\Exceptions\ApiException;
+use Calisero\Sms\Exceptions\ForbiddenException;
+use Calisero\Sms\Exceptions\NotFoundException;
+use Calisero\Sms\Exceptions\RateLimitedException;
+use Calisero\Sms\Exceptions\ServerException;
+use Calisero\Sms\Exceptions\UnauthorizedException;
+use Calisero\Sms\Exceptions\ValidationException;
 use Illuminate\Console\Command;
 
 class SendVerificationCommand extends Command
 {
-    protected $signature = 'calisero:verification:send 
-                            {to : The recipient phone number in E.164 format}
-                            {--brand= : Brand name (required if no template)}
-                            {--template= : Message template containing {code} placeholder}
-                            {--expires-in= : Code expiration time in minutes (1-10)}';
+    protected $signature = 'calisero:verification:send
+                            {to : The recipient phone number}
+                            {--brand= : Optional brand name}
+                            {--template= : Optional message template containing {code}}
+                            {--expires-in= : Optional code expiration time in minutes}';
 
-    protected $description = 'Send a verification code to a phone number via SMS';
+    protected $description = 'Send a verification code (all input validated by Calisero API)';
 
     public function handle(): int
     {
-        $to = $this->argument('to');
+        $to = (string) $this->argument('to');
         $brand = $this->option('brand');
         $template = $this->option('template');
         $expiresIn = $this->option('expires-in');
 
-        // Validate that either brand or template is provided
-        if (! $brand && ! $template) {
-            $this->error('✗ Either --brand or --template must be provided');
-
-            return self::FAILURE;
-        }
-
         $this->info("Sending verification code to {$to}...");
 
         try {
-            $params = [
-                'to' => $to,
-            ];
-
+            $params = [ 'to' => $to ];
             if ($brand) {
                 $params['brand'] = $brand;
             }
-
             if ($template) {
                 $params['template'] = $template;
             }
-
-            if ($expiresIn) {
+            if ($expiresIn !== null) {
                 $params['expires_in'] = (int) $expiresIn;
             }
 
             $response = Calisero::sendVerification($params);
+            $verification = $response->getData();
 
-            $this->info('✓ Verification code sent successfully!');
+            $this->info('✓ Verification code sent');
             $this->table(
                 ['Property', 'Value'],
                 [
-                    ['Phone', $response->phone ?? 'N/A'],
-                    ['Status', $response->status ?? 'N/A'],
-                    ['Expires At', $response->expires_at ?? 'N/A'],
-                    ['Brand', $response->brand ?? 'N/A'],
+                    ['ID', $verification->getId()],
+                    ['Phone', $verification->getPhone()],
+                    ['Status', $verification->getStatus()],
+                    ['Brand', $verification->getBrand() ?? '—'],
+                    ['Template', $verification->getTemplate() ?? '—'],
+                    ['Created At', $verification->getCreatedAt()],
+                    ['Expires At', $verification->getExpiresAt()],
+                    ['Attempts', (string) $verification->getAttempts()],
+                    ['Expired', $verification->isExpired() ? 'Yes' : 'No'],
                 ]
             );
 
             return self::SUCCESS;
-        } catch (\Exception $e) {
-            $this->error('✗ Failed to send verification code: '.$e->getMessage());
+        } catch (ValidationException $e) {
+            // API returns explicit validation errors (422) including phone/template/etc problems
+            $this->error('✗ API validation error: '.$e->getMessage());
+            $errors = $e->getValidationErrors();
+            if (! empty($errors)) {
+                $rows = [];
+                foreach ($errors as $field => $messages) {
+                    if (is_array($messages)) {
+                        $messages = implode('; ', array_map('strval', $messages));
+                    }
+                    $rows[] = [$field, (string) $messages];
+                }
+                $this->table(['Field', 'Errors'], $rows);
+            }
+
+            return self::FAILURE;
+        } catch (RateLimitedException $e) {
+            $this->error('✗ Rate limited: '.$e->getMessage());
+            $this->line('Retry after: '.($e->getRetryAfter() ?? 'unknown').'s');
+
+            return self::FAILURE;
+        } catch (UnauthorizedException|ForbiddenException $e) {
+            $this->error('✗ Auth/permission error: '.$e->getMessage());
+
+            return self::FAILURE;
+        } catch (NotFoundException $e) {
+            $this->error('✗ Resource not found: '.$e->getMessage());
+
+            return self::FAILURE;
+        } catch (ServerException $e) {
+            $this->error('✗ Server error: '.$e->getMessage());
+
+            return self::FAILURE;
+        } catch (ApiException $e) {
+            $this->error('✗ API error: '.$e->getMessage().' (status: '.$e->getStatusCode().', request: '.$e->getRequestId().')');
+
+            return self::FAILURE;
+        } catch (\Throwable $e) {
+            $this->error('✗ Unexpected failure: '.$e->getMessage());
 
             return self::FAILURE;
         }

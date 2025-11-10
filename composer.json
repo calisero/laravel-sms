@@ -47,8 +47,8 @@
     }
   },
   "scripts": {
-    "cs:check": "PHP_CS_FIXER_IGNORE_ENV=1 php -d memory_limit=256M vendor/bin/php-cs-fixer fix --dry-run --format=txt",
-    "cs:fix": "PHP_CS_FIXER_IGNORE_ENV=1 php -d memory_limit=256M vendor/bin/php-cs-fixer fix --diff --ansi",
+    "cs:check": "php -d memory_limit=256M vendor/bin/php-cs-fixer fix --dry-run --format=txt",
+    "cs:fix": "php -d memory_limit=256M vendor/bin/php-cs-fixer fix --diff --ansi",
     "lint": "@cs:check",
     "format": "@cs:fix",
     "stan": "phpstan analyse --memory-limit=1G",

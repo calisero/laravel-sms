@@ -18,7 +18,7 @@ try {
         'to' => '+1234567890',
         'text' => 'Sending with extended timeout',
         'from' => 'MyApp',
-        'idempotencyKey' => 'extended-' . uniqid(),
+        'idempotencyKey' => 'greeting-' . bin2hex(random_bytes(4)),
     ]);
 } finally {
     // Always restore to avoid side effects for subsequent operations
