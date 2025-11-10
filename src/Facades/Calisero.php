@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static mixed sendSms(array $params)
  * @method static mixed getBalance()
  * @method static mixed getMessageStatus(string $messageId)
+ * @method static mixed sendVerification(array $params)
+ * @method static mixed checkVerification(array $params)
  *
  * @see \Calisero\LaravelSms\SmsClient
  */

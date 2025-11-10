@@ -117,6 +117,104 @@ class SmsClient implements SmsClientContract
         return $this->client->messages()->get($messageId);
     }
 
+    /**
+     * List messages with pagination.
+     */
+    public function listMessages(int $page = 1): \Calisero\Sms\Dto\PaginatedMessages
+    {
+        return $this->client->messages()->list($page);
+    }
+
+    /**
+     * Delete a message by ID (only if not yet sent).
+     */
+    public function deleteMessage(string $messageId): void
+    {
+        $this->client->deleteMessage($messageId);
+
+        Log::channel(config('calisero.logging.channel', 'default'))
+            ->info('SMS message deleted', ['message_id' => $messageId]);
+    }
+
+    /**
+     * Send a verification code to a phone number.
+     *
+     * @param array<string, mixed> $params
+     * @throws \Exception
+     */
+    public function sendVerification(array $params): mixed
+    {
+        try {
+            $phone = $params['to'] ?? $params['phone'];
+            $brand = $params['brand'] ?? null;
+            $template = $params['template'] ?? null;
+            $expiresIn = $params['expires_in'] ?? $params['expiresIn'] ?? null;
+
+            $request = new \Calisero\Sms\Dto\CreateVerificationRequest(
+                phone: $phone,
+                brand: $brand,
+                template: $template,
+                expiresIn: null !== $expiresIn ? (int) $expiresIn : null
+            );
+
+            $response = $this->client->verifications()->create($request);
+
+            Log::channel(config('calisero.logging.channel', 'default'))
+                ->info('Verification code sent', [
+                    'phone' => $phone,
+                    'has_brand' => null !== $brand,
+                    'has_template' => null !== $template,
+                ]);
+
+            return $response;
+        } catch (\Exception $e) {
+            Log::channel(config('calisero.logging.channel', 'default'))
+                ->error('Failed to send verification code', [
+                    'phone' => $params['to'] ?? $params['phone'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Check/verify a verification code.
+     *
+     * @param array<string, mixed> $params
+     * @throws \Exception
+     */
+    public function checkVerification(array $params): mixed
+    {
+        try {
+            $phone = $params['to'] ?? $params['phone'];
+            $code = $params['code'];
+
+            $request = new \Calisero\Sms\Dto\VerificationCheckRequest(
+                phone: $phone,
+                code: $code
+            );
+
+            $response = $this->client->verifications()->validate($request);
+
+            Log::channel(config('calisero.logging.channel', 'default'))
+                ->info('Verification code checked', [
+                    'phone' => $phone,
+                    'status' => $response->getData()->getStatus(),
+                ]);
+
+            return $response;
+        } catch (\Exception $e) {
+            Log::channel(config('calisero.logging.channel', 'default'))
+                ->error('Failed to check verification code', [
+                    'phone' => $params['to'] ?? $params['phone'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+
+            throw $e;
+        }
+    }
+
     private function shouldInjectCallback(): bool
     {
         return (bool) config('calisero.webhook.enabled') && (bool) config('calisero.webhook.path');
