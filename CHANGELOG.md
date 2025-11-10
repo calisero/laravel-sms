@@ -3,6 +3,14 @@
 All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
+### Removed
+- Internal logging (Log facade usage) from `SmsClient` and example subscriber; logging is now entirely user-managed.
+
+### Added
+- `calisero:sms:status {id}` command to fetch and display SMS status/details.
+
+### Changed
+- Test & verification commands rely solely on Calisero API validation (phone, code, attempts) with 422 responses and explicit messages.
 
 ## [1.1.1] - 2025-11-09
 
