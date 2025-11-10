@@ -5,12 +5,15 @@
  *
  * This example shows a complete two-factor authentication implementation
  * using the verification API.
- * 
- * Note: Verification codes are 6 characters (alphanumeric) and case-insensitive.
- * Users can enter codes in any case: SBMH0f, sbmh0f, SbMh0F - all are valid.
+ *
+ * Notes:
+ * - Verification codes are 6 characters (alphanumeric) and case-insensitive.
+ *   Users can enter codes in any case: SBMH0f, sbmh0f, SbMh0F - all are valid.
+ * - This file is an example snippet; in a real app place these in a Controller.
  */
 
 use Calisero\LaravelSms\Facades\Calisero;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -18,7 +21,7 @@ use App\Models\User;
 /**
  * Step 1: Send verification code to user's phone
  */
-function sendVerificationCode(Request $request)
+function sendVerificationCode(Request $request): JsonResponse
 {
     $request->validate([
         'phone' => 'required|string',
@@ -65,7 +68,7 @@ function sendVerificationCode(Request $request)
 /**
  * Step 2: Verify the code entered by user
  */
-function verifyCode(Request $request)
+function verifyCode(Request $request): JsonResponse
 {
     $request->validate([
         'phone' => 'required|string',
