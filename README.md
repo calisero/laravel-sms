@@ -13,7 +13,8 @@ A first-class Laravel 12 package that wraps the [Calisero PHP SDK](https://githu
 
 - 🚀 **Laravel 12** ready with full support for the latest features
 - 📱 **Easy SMS sending** via Facade, Notification channels, or direct client usage
-- 🔐 **Webhook handling**
+- 🔐 **Two-Factor Authentication** with verification codes API
+- 🔒 **Webhook handling** with token-based security
 - ✅ **Validation rules** for phone numbers (E.164) and sender IDs
 - 🎯 **Queue support** for reliable message delivery
 - 🧪 **Artisan commands** for testing and development
@@ -67,19 +68,60 @@ CALISERO_LOG_CHANNEL=default
 
 ## Usage
 
-### Using the Facade
+### Quick Start
 
-The simplest way to send an SMS:
+#### Sending SMS via Facade
 
 ```php
 use Calisero\LaravelSms\Facades\Calisero;
 
-Calisero::sendSms([
-    'to' => '+1234567890',
+$response = Calisero::sendSms([
+    'to' => '+40712345678',
     'text' => 'Hello from Laravel!',
     // 'from' => 'MyBrand' // Include ONLY if approved by Calisero
 ]);
 ```
+
+#### Verification Codes (2FA)
+
+Send and verify one-time codes for two-factor authentication:
+
+```php
+use Calisero\LaravelSms\Facades\Calisero;
+
+// Send a verification code (with brand)
+$response = Calisero::sendVerification([
+    'to' => '+40712345678',
+    'brand' => 'MyApp', // Required if no template
+    'expires_in' => 5, // Optional: 1-10 minutes, default 5
+]);
+
+// OR send with custom template
+$response = Calisero::sendVerification([
+    'to' => '+40712345678',
+    'template' => 'Your verification code is {code}. Valid for 5 minutes.',
+    'expires_in' => 5,
+]);
+
+// The response includes expiration time
+echo "Code expires at: " . $response->expires_at;
+
+// Check/verify the code entered by user
+$result = Calisero::checkVerification([
+    'to' => '+40712345678',
+    'code' => '123456', // Code entered by user (6 characters)
+]);
+
+if ('verified' === $result->status) {
+    // Code is valid, proceed with authentication
+    echo "Verification successful!";
+} else {
+    // Code is invalid or expired
+    echo "Verification failed!";
+}
+```
+
+> **Note**: Either `brand` OR `template` is required when sending verification codes. The template must contain `{code}` placeholder. Codes are 6 characters and sent via SMS.
 
 ### Using Notifications
 
@@ -267,10 +309,40 @@ Calisero::sendSms([
 
 ### Artisan Commands
 
-#### Send a test SMS
+The package provides several Artisan commands for testing and development:
+
+#### Test SMS Sending
 
 ```bash
-php artisan calisero:sms:test +1234567890 --from="MyApp" --text="Test message"
+php artisan calisero:sms:test +40712345678 --from=YourApp --text="Test message"
+```
+
+#### Verification Commands
+
+Send a verification code with brand:
+
+```bash
+php artisan calisero:verification:send +40712345678 --brand=MyApp
+```
+
+Send a verification code with custom template:
+
+```bash
+php artisan calisero:verification:send +40712345678 --template="Your code is {code}" --expires-in=5
+```
+
+Check a verification code:
+
+```bash
+php artisan calisero:verification:check +40712345678 123456
+```
+
+#### Webhook Verification
+
+Verify webhook signatures offline:
+
+```bash
+php artisan calisero:webhook:verify "sha256=..." --payload='{"status":"delivered"}'
 ```
 
 ## Environment Variables Reference
