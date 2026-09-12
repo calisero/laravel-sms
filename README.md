@@ -2,16 +2,16 @@
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
 [![tests](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml)
-[![PHPStan](https://img.shields.io/badge/PHPStan-level%209-brightgreen.svg?style=flat-square)](https://phpstan.org)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%206-brightgreen.svg?style=flat-square)](https://phpstan.org)
 [![License](https://img.shields.io/packagist/l/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
 [![Tests](https://img.shields.io/github/actions/workflow/status/calisero/laravel-sms/ci.yml?branch=main&label=tests&style=flat-square)](https://github.com/calisero/laravel-sms/actions/workflows/ci.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/calisero/laravel-sms.svg?style=flat-square)](https://packagist.org/packages/calisero/laravel-sms)
 
-A first-class Laravel 12 package that wraps the [Calisero PHP SDK](https://github.com/calisero/calisero-php) and provides idiomatic Laravel features for sending SMS messages through the Calisero API.
+A first-class Laravel package that wraps the [Calisero PHP SDK](https://github.com/calisero/calisero-php) and provides idiomatic Laravel features for sending SMS messages through the Calisero API. Supports **Laravel 12 and Laravel 13**.
 
 ## Features
 
-- 🚀 **Laravel 12** ready with full support for the latest features
+- 🚀 **Laravel 12 & 13** ready with full support for the latest features
 - 📱 **Easy SMS sending** via Facade, Notification channels, or direct client usage
 - 🔐 **Two-Factor Authentication** with verification codes API
 - 🔒 **Webhook handling** with token-based security
@@ -20,6 +20,16 @@ A first-class Laravel 12 package that wraps the [Calisero PHP SDK](https://githu
 - 🧪 **Artisan commands** for testing and development
 - 📊 **Comprehensive logging** and error handling
 - 🏗️ **PSR-4 compliant** with full test coverage
+
+## Requirements
+
+| Package version | Laravel | PHP |
+| --- | --- | --- |
+| `^1.2` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) |
+| `1.0.x` – `1.1.x` | 12.x | 8.2 – 8.4 |
+
+Composer picks the right Laravel release for your PHP version automatically: on PHP 8.2 you get
+Laravel 12, and on PHP 8.3, 8.4 or 8.5 you can run either Laravel 12 or 13.
 
 ## Installation
 
@@ -496,9 +506,10 @@ composer test
 
 The project ships with an automated GitHub Actions workflow (`.github/workflows/ci.yml`) that runs:
 
-- Code Style (PHP CS Fixer) on PHP 8.2, 8.3, 8.4
-- Static Analysis (PHPStan) on PHP 8.2, 8.3, 8.4
-- Test Matrix on PHP 8.2, 8.3, 8.4
+- Code Style (PHP CS Fixer) on PHP 8.2, 8.3, 8.4, 8.5
+- Static Analysis (PHPStan) on PHP 8.2, 8.3, 8.4, 8.5 against Laravel 12 and 13
+- Test Matrix on PHP 8.2, 8.3, 8.4, 8.5 against Laravel 12 and 13
+  (Laravel 13 is skipped on PHP 8.2, which it does not support)
 
 Local commands:
 
@@ -519,9 +530,23 @@ composer test
 composer qa
 ```
 
+To test against a specific Laravel version locally:
+
+```bash
+# Laravel 13
+composer update --with="illuminate/support:^13.0" --with="illuminate/notifications:^13.0" \
+  --with="illuminate/validation:^13.0" --with="illuminate/routing:^13.0" --with="illuminate/console:^13.0"
+
+# Laravel 12
+composer update --with="illuminate/support:^12.0" --with="illuminate/notifications:^12.0" \
+  --with="illuminate/validation:^12.0" --with="illuminate/routing:^12.0" --with="illuminate/console:^12.0"
+```
+
 Notes:
-- `PHP_CS_FIXER_IGNORE_ENV` is set in scripts to allow running php-cs-fixer on PHP 8.4 until official support lands.
-- PHPUnit configuration updated for modern schema; tests currently pass with zero deprecations.
+- Running php-cs-fixer on a PHP version newer than the project minimum is allowed via
+  `setUnsupportedPhpVersionAllowed()` in `.php-cs-fixer.php` (the older `PHP_CS_FIXER_IGNORE_ENV`
+  environment variable is deprecated and no longer used).
+- PHPUnit configuration uses the modern schema; tests pass with zero deprecations on both Laravel 12 and 13.
 
 ## Changelog
 

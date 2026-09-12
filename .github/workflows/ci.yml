@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,24 +30,27 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
           restore-keys: |
             composer-${{ runner.os }}-${{ matrix.php }}-
             composer-${{ runner.os }}-
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        run: composer update --prefer-dist --no-progress --no-interaction
       - name: PHP CS Fixer Lint
-        env:
-            PHP_CS_FIXER_IGNORE_ENV: 1
         run: composer cs:check
 
   static-analysis:
-    name: PHPStan (PHP ${{ matrix.php }})
+    name: PHPStan (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
+        laravel: ['12', '13']
+        exclude:
+          # Laravel 13 requires PHP 8.3 or newer.
+          - php: '8.2'
+            laravel: '13'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,22 +67,33 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-${{ matrix.php }}-L${{ matrix.laravel }}-${{ hashFiles('**/composer.json') }}
           restore-keys: |
+            composer-${{ runner.os }}-${{ matrix.php }}-L${{ matrix.laravel }}-
             composer-${{ runner.os }}-${{ matrix.php }}-
-            composer-${{ runner.os }}-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+      - name: Install dependencies (Laravel ${{ matrix.laravel }})
+        run: |
+          composer update --prefer-dist --no-progress --no-interaction \
+            --with="illuminate/support:^${{ matrix.laravel }}.0" \
+            --with="illuminate/notifications:^${{ matrix.laravel }}.0" \
+            --with="illuminate/validation:^${{ matrix.laravel }}.0" \
+            --with="illuminate/routing:^${{ matrix.laravel }}.0" \
+            --with="illuminate/console:^${{ matrix.laravel }}.0"
       - name: PHPStan
         run: composer stan
 
   tests:
-    name: Tests (PHP ${{ matrix.php }})
+    name: Tests (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4']
+        php: ['8.2', '8.3', '8.4', '8.5']
+        laravel: ['12', '13']
+        exclude:
+          # Laravel 13 requires PHP 8.3 or newer.
+          - php: '8.2'
+            laravel: '13'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,12 +110,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
+          key: composer-${{ runner.os }}-${{ matrix.php }}-L${{ matrix.laravel }}-${{ hashFiles('**/composer.json') }}
           restore-keys: |
+            composer-${{ runner.os }}-${{ matrix.php }}-L${{ matrix.laravel }}-
             composer-${{ runner.os }}-${{ matrix.php }}-
-            composer-${{ runner.os }}-
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+      - name: Install dependencies (Laravel ${{ matrix.laravel }})
+        run: |
+          composer update --prefer-dist --no-progress --no-interaction \
+            --with="illuminate/support:^${{ matrix.laravel }}.0" \
+            --with="illuminate/notifications:^${{ matrix.laravel }}.0" \
+            --with="illuminate/validation:^${{ matrix.laravel }}.0" \
+            --with="illuminate/routing:^${{ matrix.laravel }}.0" \
+            --with="illuminate/console:^${{ matrix.laravel }}.0"
+      - name: Verify installed Laravel version
+        run: composer show illuminate/support | head -n 5
       - name: Run Tests
         run: composer test
 
@@ -111,4 +133,4 @@ jobs:
     needs: [code-style, static-analysis, tests]
     steps:
       - name: QA Summary
-        run: echo "All quality checks across all PHP versions passed."
+        run: echo "All quality checks across all PHP and Laravel versions passed."

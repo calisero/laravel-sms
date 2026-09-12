@@ -130,7 +130,7 @@ class SmsClient implements SmsClientContract
      */
     public function deleteMessage(string $messageId): void
     {
-        $this->client->deleteMessage($messageId);
+        $this->client->messages()->delete($messageId);
 
         Log::channel(config('calisero.logging.channel', 'default'))
             ->info('SMS message deleted', ['message_id' => $messageId]);

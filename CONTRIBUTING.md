@@ -23,7 +23,7 @@ Thanks for taking the time to contribute! This document explains how to set up y
 This package provides an idiomatic Laravel integration for the Calisero SMS API. Goals:
 - Stay thin: delegate transport/business logic to the underlying Calisero PHP SDK.
 - Feel native to Laravel (facade, service provider, notification channel, validation rules, events, webhooks).
-- Remain framework‑aligned (Laravel 12+ at present) and semantically versioned.
+- Remain framework‑aligned (Laravel 12.x and 13.x at present) and semantically versioned.
 - Prefer clarity over magic.
 
 Non‑Goals:
@@ -73,7 +73,21 @@ You should see all checks pass (or only style diffs if you intentionally changed
 | Tests | `composer test` | PHPUnit modern config. |
 | Full Pipeline | `composer qa` | validate + cs:check + stan + test. |
 
-> We intentionally run php-cs-fixer with `PHP_CS_FIXER_IGNORE_ENV=1` due to PHP 8.4 usage ahead of upstream support. Remove once php-cs-fixer officially supports 8.4.
+> php-cs-fixer is allowed to run on PHP versions newer than the project minimum through
+> `setUnsupportedPhpVersionAllowed()` in `.php-cs-fixer.php`. The old `PHP_CS_FIXER_IGNORE_ENV`
+> environment variable is deprecated upstream and is no longer set by the composer scripts.
+
+When changing dependency constraints, verify both supported Laravel majors locally:
+
+```bash
+composer update --with="illuminate/support:^13.0" --with="illuminate/notifications:^13.0" \
+  --with="illuminate/validation:^13.0" --with="illuminate/routing:^13.0" --with="illuminate/console:^13.0"
+composer qa
+
+composer update --with="illuminate/support:^12.0" --with="illuminate/notifications:^12.0" \
+  --with="illuminate/validation:^12.0" --with="illuminate/routing:^12.0" --with="illuminate/console:^12.0"
+composer qa
+```
 
 ---
 ## 5. Coding Standards
@@ -84,12 +98,24 @@ You should see all checks pass (or only style diffs if you intentionally changed
 - Use strict types where practical (consider adding `declare(strict_types=1);` in new files—stay consistent with existing style; if you add it, apply broadly in a follow‑up PR, not piecemeal).
 
 ### PHPStan
+- Level 6 over both `src/` and `tests/`.
 - If you need to suppress a false positive, prefer a narrow `@phpstan-ignore-line` *with a reason*.
 - Avoid `@phpstan-ignore-next-line` in multiple adjacent lines—refactor instead.
+- Scope any `ignoreErrors` entry in `phpstan.neon` to a `path`, so it cannot mask the same
+  problem elsewhere in the repository.
 
 ### Tests
 - Follow `test_<intent>` naming, no `@test` annotations.
 - One logical expectation per concept; use data providers when variation count grows.
+- **Never hard-code a phone number with a live country code**, not even an invented one: `+40`,
+  `+1`, `+44` and friends are allocated ranges, and a plausible-looking number may belong to a
+  real person. Take every number from `Calisero\LaravelSms\Tests\Support\TestPhones`, whose
+  values all use country code `+999` - reserved by ITU-T E.164 and never assigned to any country.
+  Add a constant there if you need another one.
+- Shared test doubles live in `tests/Doubles/`, notifiables and notifications in `tests/Fixtures/`,
+  reusable helper traits in `tests/Concerns/`. Do not declare helper classes at the bottom of a
+  test file: they share the `Tests\Unit` namespace and collide across files.
+- `composer stan` covers `tests/` as well as `src/`, so test code must be type-clean too.
 
 ---
 ## 6. Commit Messages & Branching

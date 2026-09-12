@@ -11,19 +11,19 @@
     }
   ],
   "require": {
-    "php": "^8.2 || ^8.4",
-    "illuminate/support": "^12.0",
-    "illuminate/notifications": "^12.0",
-    "illuminate/validation": "^12.0",
-    "illuminate/routing": "^12.0",
-    "illuminate/console": "^12.0",
+    "php": "^8.2 || ^8.3 || ^8.4 || ^8.5",
+    "illuminate/support": "^12.0 || ^13.0",
+    "illuminate/notifications": "^12.0 || ^13.0",
+    "illuminate/validation": "^12.0 || ^13.0",
+    "illuminate/routing": "^12.0 || ^13.0",
+    "illuminate/console": "^12.0 || ^13.0",
     "calisero/calisero-php": "^2.0"
   },
   "require-dev": {
-    "orchestra/testbench": "^8.0|^9.0|^10.0",
-    "phpunit/phpunit": "^11.5 || ^12.0",
-    "phpstan/phpstan": "^1.11",
-    "friendsofphp/php-cs-fixer": "^3.59",
+    "orchestra/testbench": "^10.0 || ^11.0",
+    "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0",
+    "phpstan/phpstan": "^2.1",
+    "friendsofphp/php-cs-fixer": "^3.75",
     "mockery/mockery": "^1.6"
   },
   "autoload": {
@@ -47,8 +47,8 @@
     }
   },
   "scripts": {
-    "cs:check": "PHP_CS_FIXER_IGNORE_ENV=1 php -d memory_limit=256M vendor/bin/php-cs-fixer fix --dry-run --format=txt",
-    "cs:fix": "PHP_CS_FIXER_IGNORE_ENV=1 php -d memory_limit=256M vendor/bin/php-cs-fixer fix --diff --ansi",
+    "cs:check": "php -d memory_limit=256M vendor/bin/php-cs-fixer fix --dry-run --format=txt",
+    "cs:fix": "php -d memory_limit=256M vendor/bin/php-cs-fixer fix --diff --ansi",
     "lint": "@cs:check",
     "format": "@cs:fix",
     "stan": "phpstan analyse --memory-limit=1G",

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Calisero\LaravelSms\Tests\Fixtures;
 
 use Calisero\LaravelSms\Notification\SmsMessage;
@@ -14,8 +16,10 @@ class TestSmsNotification extends Notification
 
     /**
      * Get the notification's delivery channels.
+     *
+     * @return list<string>
      */
-    public function via($notifiable): array
+    public function via(mixed $notifiable): array
     {
         return ['calisero'];
     }
@@ -23,7 +27,7 @@ class TestSmsNotification extends Notification
     /**
      * Build the SMS message.
      */
-    public function toCalisero($notifiable): SmsMessage
+    public function toCalisero(mixed $notifiable): SmsMessage
     {
         return SmsMessage::create($this->message)
             ->from('TEST');

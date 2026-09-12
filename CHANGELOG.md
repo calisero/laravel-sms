@@ -4,6 +4,79 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-12
+
+### Added
+- **Laravel 13 support** - the package now works on both Laravel 12.x and 13.x
+  - `illuminate/support`, `illuminate/notifications`, `illuminate/validation`, `illuminate/routing`
+    and `illuminate/console` constraints widened to `^12.0 || ^13.0`
+- **PHP 8.5 support** - `php` constraint widened to `^8.2 || ^8.3 || ^8.4 || ^8.5`, and PHP 8.5
+  added to every CI job
+- **Laravel version matrix in CI** - static analysis and tests now run against both Laravel 12 and 13
+  on PHP 8.2, 8.3, 8.4 and 8.5 (Laravel 13 is excluded on PHP 8.2, which it does not support)
+- **New test coverage** for the framework integration surfaces most likely to break on an upgrade
+  - `ServiceProviderTest` - container bindings and singleton behaviour, the `calisero` alias,
+    config merging, notification channel driver registration, artisan command registration,
+    webhook route registration and translation loading
+  - `SmsChannelTest` - recipient resolution order (message, `routeNotificationForCalisero()`,
+    `$notifiable->phone`), parameter mapping, and the no-op paths when no recipient or message exists
+  - `SmsMessageTest` - the fluent `SmsMessage` builder and its constructor arguments
+  - `SmsClientTest` - the wrapper's argument mapping, the snake_case/camelCase aliases for every
+    optional parameter, missing-parameter rejection, SDK error propagation, balance lookup, and
+    delegation of `getMessageStatus()` / `listMessages()` / `deleteMessage()`, none of which had
+    any coverage before
+  - `ClientFactoryTest` - client construction, and the refusal to build one without an API key
+  - Extra cases on existing behaviour: the `callback_url` fallback to `app.url` when the named
+    route is absent, token URL-encoding, credit thresholds at the boundary and from numeric
+    strings, absent/non-numeric balances, absent and wrong-case webhook statuses, and rejection
+    of tokens that are a prefix, extension or case variant of the configured one
+- Test suite grew from 28 tests / 94 assertions to 110 tests / 253 assertions
+
+### Changed
+- **PHPStan upgraded to 2.x** (`^2.1`, was `^1.11`); the analysis passes at level 6 with no baseline
+- **`orchestra/testbench`** constraint is now `^10.0 || ^11.0` (was `^8.0|^9.0|^10.0`);
+  Testbench 11 provides the Laravel 13 test harness
+- **PHPUnit** constraint widened to `^11.5 || ^12.0 || ^13.0`
+- **php-cs-fixer** minimum raised to `^3.75`
+- `php` constraint spelled out per supported minor (the previous `^8.2 || ^8.4` was redundant)
+- **PHPStan now analyses `tests/` as well as `src/`**, so test code is held to the same level 6
+  standard; the `toCalisero()` ignore is scoped to the one file that needs it instead of applying
+  repository-wide
+- **Validation rule tests converted to data providers.** They previously looped over arrays of
+  values inside a single test, so the first failure hid the rest, and they only asserted *that*
+  a value failed. They now assert *which* message the rule produced - which immediately exposed
+  a mislabelled case: `Test@Company` was listed as an invalid-character case but is 12 characters
+  long, so it was really being rejected for its length
+- **Shared test doubles extracted** to `tests/Doubles/` (`FakeSdkClient`, `FakeMessageService`,
+  `FakeAccountService`, `RecordingSmsClient`) and notifiables to `tests/Fixtures/`, replacing
+  per-file classes declared in the same namespace at the bottom of test files. `FakeSdkClient`
+  deliberately exposes only the accessors the real SDK has, so a wrapper method reaching for a
+  method the SDK lacks now fails in tests
+- **Duplicated webhook payload building** extracted into the `BuildsWebhookPayloads` trait; the
+  webhook tests no longer repeat a ten-key payload array per test case
+- `tests/Fixtures/TestSmsNotification` is now actually used by the channel tests (it was dead code)
+- The `Calisero` facade docblock now documents real return types and typed `array<string, mixed>`
+  parameters instead of `mixed`, and covers `listMessages()` and `deleteMessage()`
+- `composer cs:check` / `cs:fix` no longer set the deprecated `PHP_CS_FIXER_IGNORE_ENV` variable;
+  `.php-cs-fixer.php` already allows newer PHP versions via `setUnsupportedPhpVersionAllowed()`
+
+### Security
+- **Test phone numbers moved to the ITU-reserved +999 range.** Tests previously used numbers in
+  live, allocated ranges (`+40742…`, `+40712…`, `+4012…`, `+1234…`) which may belong to real
+  subscribers. Every number now comes from `Tests\Support\TestPhones`, whose values all use
+  country code +999 - reserved by ITU-T E.164 and never assigned to any country, so no test value
+  can route to a real person.
+
+### Fixed
+- **`deleteMessage()` no longer raises a fatal error.** It called a `deleteMessage()` method on the
+  upstream SDK client, which does not exist there, so every call ended in
+  `Error: Call to undefined method Calisero\Sms\SmsClient::deleteMessage()`. Deletion now goes
+  through `messages()->delete()`, like every other message operation. The method had no test
+  coverage, which is why the breakage went unnoticed; a regression test now covers it.
+- README PHPStan badge now reflects the configured level (6) instead of claiming level 9
+- README documents the supported Laravel and PHP combinations, and how to test against a
+  specific Laravel version locally
+
 ## [1.1.1] - 2025-11-09
 
 ### Fixed
