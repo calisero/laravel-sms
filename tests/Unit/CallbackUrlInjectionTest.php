@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Calisero\LaravelSms\Tests\Unit;
 
-use Calisero\LaravelSms\Contracts\SmsClient as SmsClientContract;
 use Calisero\LaravelSms\SmsClient;
+use Calisero\LaravelSms\Tests\Doubles\FakeSdkClient;
+use Calisero\LaravelSms\Tests\Support\TestPhones;
 use Calisero\LaravelSms\Tests\TestCase;
-use Calisero\Sms\Dto\CreateMessageRequest;
-use Calisero\Sms\Dto\CreateMessageResponse;
-use Calisero\Sms\Dto\Message;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -17,15 +15,15 @@ use Illuminate\Support\Facades\Route;
  */
 class CallbackUrlInjectionTest extends TestCase
 {
-    private FakeSdkSmsClient $fakeSdk;
+    private FakeSdkClient $sdk;
+
+    private SmsClient $client;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->fakeSdk = new FakeSdkSmsClient();
-        $this->app->bind(SmsClientContract::class, function () {
-            return new SmsClient($this->fakeSdk); // inject fake SDK
-        });
+        $this->sdk = new FakeSdkClient();
+        $this->client = new SmsClient($this->sdk);
 
         config()->set('calisero.webhook.enabled', true);
         config()->set('calisero.webhook.path', 'calisero/webhook');
@@ -35,131 +33,121 @@ class CallbackUrlInjectionTest extends TestCase
 
     public function test_callback_url_is_injected_when_enabled_and_absent(): void
     {
-        /** @var SmsClientContract $client */
-        $client = $this->app->make(SmsClientContract::class);
+        $this->send();
 
-        $client->sendSms([
-            'to' => '+12345678901',
-            'text' => 'Test',
-        ]);
-
-        $payload = $this->fakeSdk->messagesService->lastPayload;
-
-        $this->assertArrayHasKey('callback_url', $payload);
-        $this->assertSame(route('calisero.webhook'), $payload['callback_url']);
+        $this->assertArrayHasKey('callback_url', $this->payload());
+        $this->assertSame(route('calisero.webhook'), $this->payload()['callback_url']);
     }
 
     public function test_no_injection_when_disabled(): void
     {
         config()->set('calisero.webhook.enabled', false);
-        /** @var SmsClientContract $client */
-        $client = $this->app->make(SmsClientContract::class);
 
-        $client->sendSms([
-            'to' => '+12345678902',
-            'text' => 'Test2',
-        ]);
+        $this->send();
 
-        $payload = $this->fakeSdk->messagesService->lastPayload;
-        $this->assertArrayNotHasKey('callback_url', $payload);
+        $this->assertArrayNotHasKey('callback_url', $this->payload());
+    }
+
+    public function test_no_injection_when_the_path_is_empty(): void
+    {
+        config()->set('calisero.webhook.path', '');
+
+        $this->send();
+
+        $this->assertArrayNotHasKey('callback_url', $this->payload());
     }
 
     public function test_explicit_callback_url_is_preserved(): void
     {
-        config()->set('calisero.webhook.enabled', true);
-        /** @var SmsClientContract $client */
-        $client = $this->app->make(SmsClientContract::class);
+        $this->send(['callback_url' => 'https://override.test/callback']);
 
-        $client->sendSms([
-            'to' => '+12345678903',
-            'text' => 'Test3',
-            'callback_url' => 'https://override.test/callback',
-        ]);
-
-        $payload = $this->fakeSdk->messagesService->lastPayload;
-        $this->assertSame('https://override.test/callback', $payload['callback_url']);
+        $this->assertSame('https://override.test/callback', $this->payload()['callback_url']);
     }
 
     public function test_callback_url_injection_appends_token_when_configured(): void
     {
         config()->set('calisero.webhook.token', 'abc123');
-        /** @var SmsClientContract $client */
-        $client = $this->app->make(SmsClientContract::class);
 
-        $client->sendSms([
-            'to' => '+12345678904',
-            'text' => 'Token test',
-        ]);
+        $this->send();
 
-        $payload = $this->fakeSdk->messagesService->lastPayload;
-        $expectedBase = route('calisero.webhook');
-        $this->assertArrayHasKey('callback_url', $payload);
-        $this->assertSame($expectedBase . '?token=abc123', $payload['callback_url']);
+        $this->assertSame(route('calisero.webhook') . '?token=abc123', $this->payload()['callback_url']);
+    }
+
+    public function test_the_appended_token_is_url_encoded(): void
+    {
+        config()->set('calisero.webhook.token', 'a b&c=d');
+
+        $this->send();
+
+        $this->assertSame(
+            route('calisero.webhook') . '?token=' . rawurlencode('a b&c=d'),
+            $this->payload()['callback_url']
+        );
     }
 
     public function test_explicit_callback_url_with_existing_token_not_modified(): void
     {
         config()->set('calisero.webhook.token', 'abc123');
-        /** @var SmsClientContract $client */
-        $client = $this->app->make(SmsClientContract::class);
 
         $explicit = 'https://override.test/callback?token=zzz';
-        $client->sendSms([
-            'to' => '+12345678905',
-            'text' => 'Token explicit test',
-            'callback_url' => $explicit,
-        ]);
+        $this->send(['callback_url' => $explicit]);
 
-        $payload = $this->fakeSdk->messagesService->lastPayload;
-        $this->assertSame($explicit, $payload['callback_url']);
-    }
-}
-
-// --- Test Doubles ---------------------------------------------------------
-
-class FakeSdkSmsClient
-{
-    public FakeMessageService $messagesService;
-
-    public function __construct()
-    {
-        $this->messagesService = new FakeMessageService();
+        $this->assertSame($explicit, $this->payload()['callback_url']);
     }
 
-    public function messages(): FakeMessageService
+    /**
+     * With no named route available the URL is assembled from app.url and the
+     * configured path instead.
+     */
+    public function test_it_falls_back_to_the_app_url_when_the_route_is_not_registered(): void
     {
-        return $this->messagesService;
+        $this->refreshApplicationWithoutWebhookRoute();
+
+        $this->send();
+
+        $this->assertSame('https://app.test/calisero/webhook', $this->payload()['callback_url']);
     }
 
-    // Unused in these tests
-    public function accounts()
+    public function test_the_fallback_url_also_carries_the_token(): void
     {
+        $this->refreshApplicationWithoutWebhookRoute();
+        config()->set('calisero.webhook.token', 'abc123');
+
+        $this->send();
+
+        $this->assertSame('https://app.test/calisero/webhook?token=abc123', $this->payload()['callback_url']);
     }
-}
 
-class FakeMessageService
-{
-    /** @var array<string,mixed>|null */
-    public ?array $lastPayload = null;
-
-    public function create(CreateMessageRequest $request): CreateMessageResponse
+    /**
+     * @param array<string, mixed> $extra
+     */
+    private function send(array $extra = []): void
     {
-        $this->lastPayload = $request->toArray();
-        // Return minimal valid response
-        $message = new Message(
-            id: 'fake-id',
-            recipient: $this->lastPayload['recipient'],
-            body: $this->lastPayload['body'],
-            parts: 1,
-            createdAt: now()->toIso8601String(),
-            scheduledAt: $this->lastPayload['schedule_at'] ?? null,
-            sentAt: null,
-            deliveredAt: null,
-            callbackUrl: $this->lastPayload['callback_url'] ?? null,
-            status: 'queued',
-            sender: $this->lastPayload['sender'] ?? null,
-        );
+        $this->client->sendSms(array_merge([
+            'to' => TestPhones::DEFAULT,
+            'text' => 'Test',
+        ], $extra));
+    }
 
-        return new CreateMessageResponse($message);
+    /**
+     * @return array<string, mixed>
+     */
+    private function payload(): array
+    {
+        $payload = $this->sdk->messageService->lastPayload;
+        $this->assertNotNull($payload, 'Expected the SDK to have been called.');
+
+        return $payload;
+    }
+
+    /**
+     * Drop the routes registered in setUp so the named route lookup misses.
+     */
+    private function refreshApplicationWithoutWebhookRoute(): void
+    {
+        Route::setRoutes(new \Illuminate\Routing\RouteCollection());
+        config()->set('calisero.webhook.enabled', true);
+        config()->set('calisero.webhook.path', 'calisero/webhook');
+        config()->set('app.url', 'https://app.test');
     }
 }

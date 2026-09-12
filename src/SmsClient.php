@@ -107,7 +107,7 @@ class SmsClient implements SmsClientContract
      */
     public function deleteMessage(string $messageId): void
     {
-        $this->client->deleteMessage($messageId);
+        $this->client->messages()->delete($messageId);
     }
 
     /**

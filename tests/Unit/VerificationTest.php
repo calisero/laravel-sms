@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Calisero\LaravelSms\Tests\Unit;
 
 use Calisero\LaravelSms\Facades\Calisero;
+use Calisero\LaravelSms\Tests\Support\TestPhones;
 use Calisero\LaravelSms\Tests\TestCase;
 use Mockery;
 
@@ -16,7 +17,7 @@ class VerificationTest extends TestCase
         $mockResponse = Mockery::mock(\Calisero\Sms\Dto\CreateVerificationResponse::class);
         $mockVerification = Mockery::mock(\Calisero\Sms\Dto\Verification::class);
 
-        $mockVerification->shouldReceive('getPhone')->andReturn('+40712345678');
+        $mockVerification->shouldReceive('getPhone')->andReturn(TestPhones::DEFAULT);
         $mockVerification->shouldReceive('getStatus')->andReturn('unverified');
         $mockResponse->shouldReceive('getData')->andReturn($mockVerification);
 
@@ -24,7 +25,7 @@ class VerificationTest extends TestCase
             ->once()
             ->with(Mockery::on(function ($request) {
                 return $request instanceof \Calisero\Sms\Dto\CreateVerificationRequest
-                    && '+40712345678' === $request->getPhone();
+                    && TestPhones::DEFAULT === $request->getPhone();
             }))
             ->andReturn($mockResponse);
 
@@ -35,10 +36,10 @@ class VerificationTest extends TestCase
         $this->app->instance(\Calisero\LaravelSms\Contracts\SmsClient::class, $wrapperClient);
 
         $response = Calisero::sendVerification([
-            'to' => '+40712345678',
+            'to' => TestPhones::DEFAULT,
         ]);
 
-        $this->assertEquals('+40712345678', $response->getData()->getPhone());
+        $this->assertEquals(TestPhones::DEFAULT, $response->getData()->getPhone());
         $this->assertEquals('unverified', $response->getData()->getStatus());
     }
 
@@ -59,7 +60,7 @@ class VerificationTest extends TestCase
         $this->expectException(\Exception::class);
 
         Calisero::sendVerification([
-            'to' => '+40712345678',
+            'to' => TestPhones::DEFAULT,
         ]);
     }
 
@@ -69,7 +70,7 @@ class VerificationTest extends TestCase
         $mockResponse = Mockery::mock(\Calisero\Sms\Dto\GetVerificationResponse::class);
         $mockVerification = Mockery::mock(\Calisero\Sms\Dto\Verification::class);
 
-        $mockVerification->shouldReceive('getPhone')->andReturn('+40712345678');
+        $mockVerification->shouldReceive('getPhone')->andReturn(TestPhones::DEFAULT);
         $mockVerification->shouldReceive('getStatus')->andReturn('verified');
         $mockVerification->shouldReceive('getVerifiedAt')->andReturn(now()->toIso8601String());
         $mockResponse->shouldReceive('getData')->andReturn($mockVerification);
@@ -78,7 +79,7 @@ class VerificationTest extends TestCase
             ->once()
             ->with(Mockery::on(function ($request) {
                 return $request instanceof \Calisero\Sms\Dto\VerificationCheckRequest
-                    && '+40712345678' === $request->getPhone()
+                    && TestPhones::DEFAULT === $request->getPhone()
                     && '123456' === $request->getCode();
             }))
             ->andReturn($mockResponse);
@@ -90,7 +91,7 @@ class VerificationTest extends TestCase
         $this->app->instance(\Calisero\LaravelSms\Contracts\SmsClient::class, $wrapperClient);
 
         $result = Calisero::checkVerification([
-            'to' => '+40712345678',
+            'to' => TestPhones::DEFAULT,
             'code' => '123456',
         ]);
 
@@ -104,7 +105,7 @@ class VerificationTest extends TestCase
         $mockResponse = Mockery::mock(\Calisero\Sms\Dto\GetVerificationResponse::class);
         $mockVerification = Mockery::mock(\Calisero\Sms\Dto\Verification::class);
 
-        $mockVerification->shouldReceive('getPhone')->andReturn('+40712345678');
+        $mockVerification->shouldReceive('getPhone')->andReturn(TestPhones::DEFAULT);
         $mockVerification->shouldReceive('getStatus')->andReturn('unverified');
         $mockVerification->shouldReceive('getVerifiedAt')->andReturn(null);
         $mockResponse->shouldReceive('getData')->andReturn($mockVerification);
@@ -113,7 +114,7 @@ class VerificationTest extends TestCase
             ->once()
             ->with(Mockery::on(function ($request) {
                 return $request instanceof \Calisero\Sms\Dto\VerificationCheckRequest
-                    && '+40712345678' === $request->getPhone()
+                    && TestPhones::DEFAULT === $request->getPhone()
                     && '999999' === $request->getCode();
             }))
             ->andReturn($mockResponse);
@@ -125,7 +126,7 @@ class VerificationTest extends TestCase
         $this->app->instance(\Calisero\LaravelSms\Contracts\SmsClient::class, $wrapperClient);
 
         $result = Calisero::checkVerification([
-            'to' => '+40712345678',
+            'to' => TestPhones::DEFAULT,
             'code' => '999999',
         ]);
 
