@@ -7,6 +7,7 @@ namespace Calisero\LaravelSms\Tests\Unit;
 use Calisero\LaravelSms\Console\Commands\CheckVerificationCommand;
 use Calisero\LaravelSms\Console\Commands\SendTestSmsCommand;
 use Calisero\LaravelSms\Console\Commands\SendVerificationCommand;
+use Calisero\LaravelSms\Console\Commands\StatusSmsCommand;
 use Calisero\LaravelSms\Contracts\SmsClient as SmsClientContract;
 use Calisero\LaravelSms\Notification\SmsChannel;
 use Calisero\LaravelSms\SmsClient;
@@ -58,6 +59,7 @@ class ServiceProviderTest extends TestCase
         $this->assertInstanceOf(SendTestSmsCommand::class, $commands['calisero:sms:test'] ?? null);
         $this->assertInstanceOf(SendVerificationCommand::class, $commands['calisero:verification:send'] ?? null);
         $this->assertInstanceOf(CheckVerificationCommand::class, $commands['calisero:verification:check'] ?? null);
+        $this->assertInstanceOf(StatusSmsCommand::class, $commands['calisero:sms:status'] ?? null);
     }
 
     public function test_it_registers_the_webhook_route_when_enabled(): void

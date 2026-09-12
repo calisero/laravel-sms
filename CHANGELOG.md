@@ -73,9 +73,25 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
   `Error: Call to undefined method Calisero\Sms\SmsClient::deleteMessage()`. Deletion now goes
   through `messages()->delete()`, like every other message operation. The method had no test
   coverage, which is why the breakage went unnoticed; a regression test now covers it.
+- **Rebuilt `README.md`, which was corrupted on `main`.** It had grown to 1745 lines with the
+  "Automatic callback_url Injection / Test SMS Sending / SMS Status / Verification Commands /
+  Webhook Verification" block repeated 11 times, and it ended mid-sentence on an unterminated
+  `CALISERO_WEBHOOK_ENABLED=false`, having lost every section after it (Quality Assurance,
+  Changelog, Contributing, License). Restored to a single coherent copy, with the genuine
+  additions from 1.1.2 (the `calisero:sms:status` docs and the logging-removal note) preserved
 - README PHPStan badge now reflects the configured level (6) instead of claiming level 9
 - README documents the supported Laravel and PHP combinations, and how to test against a
   specific Laravel version locally
+
+## [1.1.2] - 2025-11-10
+### Removed
+- Internal logging (Log facade usage) from `SmsClient` and example subscriber; logging is now entirely user-managed.
+
+### Added
+- `calisero:sms:status {id}` command to fetch and display SMS status/details.
+
+### Changed
+- Test & verification commands rely solely on Calisero API validation (phone, code, attempts) with 422 responses and explicit messages.
 
 ## [1.1.1] - 2025-11-09
 

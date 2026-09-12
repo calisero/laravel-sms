@@ -21,6 +21,8 @@ A first-class Laravel package that wraps the [Calisero PHP SDK](https://github.c
 - 📊 **Comprehensive logging** and error handling
 - 🏗️ **PSR-4 compliant** with full test coverage
 
+> Internal package logging was removed. Add your own logging in event listeners/subscribers.
+
 ## Requirements
 
 | Package version | Laravel | PHP |
@@ -325,6 +327,12 @@ The package provides several Artisan commands for testing and development:
 
 ```bash
 php artisan calisero:sms:test +40712345678 --from=YourApp --text="Test message"
+```
+
+#### SMS Status
+
+```bash
+php artisan calisero:sms:status 019961d8-3338-700c-be17-10d061f03a5c
 ```
 
 #### Verification Commands

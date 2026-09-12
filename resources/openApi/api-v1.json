@@ -1,0 +1,1584 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Calisero transactional SMS API",
+        "version": "1.0.12 - 08.10.2025",
+        "description": "API documentation for sending and managing transactional SMS messages via Calisero [(https://calisero.ro)](https://calisero.ro)."
+    },
+    "externalDocs": {
+        "description": "Official PHP Library (GitHub)",
+        "url": "https://github.com/calisero/calisero-php"
+    },
+    "servers": [
+        {
+            "url": "https://rest.calisero.ro/api/v1",
+            "description": "Production server"
+        }
+    ],
+    "paths": {
+        "/accounts/{accountId}": {
+            "get": {
+                "summary": "Retrieve account information",
+                "operationId": "getAccount",
+                "tags": [
+                    "Accounts"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the account",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetAccountResponse"
+                                },
+                                "example": {
+                                    "data": {
+                                        "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                        "code": "ABC1234",
+                                        "name": "My Company",
+                                        "description": "Company description",
+                                        "fiscal_code": "RO12345678",
+                                        "registry_number": "J40/123456/2023",
+                                        "iban": "RO49AAAA1B31007593840000",
+                                        "city": "Bucharest",
+                                        "state": "Bucharest",
+                                        "country": "RO",
+                                        "address": "Main Street 123",
+                                        "postal_code": 123456,
+                                        "email": "contact@company.com",
+                                        "phone": "+40721***456",
+                                        "contact_person": "John Doe",
+                                        "credit": 100.50,
+                                        "status": "active",
+                                        "sandbox": false,
+                                        "created_at": "2024-09-20T12:48:55.000000Z"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            }
+        },
+        "/messages": {
+            "post": {
+                "summary": "Create a new message",
+                "operationId": "createMessage",
+                "tags": [
+                    "Messages"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateMessageRequest"
+                            },
+                            "example": {
+                                "recipient": "40752******",
+                                "body": "Test message",
+                                "schedule_at": "2024-11-16 13:21:00",
+                                "callback_url": "https://yoursite.com/your-callback-url",
+                                "sender": "CALISERO",
+                                "validity": 72
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Message created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateMessageResponse"
+                                },
+                                "example": {
+                                    "data": {
+                                        "id": "9e2574e8-3615-4090-9b5a-0fc812079da8",
+                                        "recipient": "40752******",
+                                        "body": "Test message!",
+                                        "parts": 1,
+                                        "created_at": "2025-02-06T10:18:43.000000Z",
+                                        "scheduled_at": "2025-02-06T10:18:43.000000Z",
+                                        "sent_at": null,
+                                        "delivered_at": null,
+                                        "callback_url": "https://yoursite.com/your-callback-url",
+                                        "status": "scheduled",
+                                        "sender": "CALISERO"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            },
+            "get": {
+                "summary": "Retrieve a list of messages",
+                "operationId": "listMessages",
+                "tags": [
+                    "Messages"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number for pagination",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of messages",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedMessages"
+                                },
+                                "example": {
+                                    "data": [
+                                        {
+                                            "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                            "recipient": "40752******",
+                                            "body": "Mesaje de test anonimizat ***",
+                                            "parts": 1,
+                                            "created_at": "2024-09-20T12:48:55.000000Z",
+                                            "scheduled_at": "2024-09-20T12:48:55.000000Z",
+                                            "sent_at": "2024-09-20T12:49:07.000000Z",
+                                            "delivered_at": null,
+                                            "callback_url": "https://yoursite.com/your-callback-url",
+                                            "status": "sent",
+                                            "sender": "CALISERO"
+                                        }
+                                    ],
+                                    "links": {
+                                        "first": "https://rest.calisero.ro/api/v1/messages?page=1",
+                                        "last": null,
+                                        "prev": null,
+                                        "next": "https://rest.calisero.ro/api/v1/messages?page=2"
+                                    },
+                                    "meta": {
+                                        "current_page": 1,
+                                        "from": 1,
+                                        "path": "https://rest.calisero.ro/api/v1/messages",
+                                        "per_page": 50,
+                                        "to": 50
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            }
+        },
+        "/messages/{messageId}": {
+            "get": {
+                "summary": "Retrieve a single message",
+                "operationId": "getMessage",
+                "tags": [
+                    "Messages"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the message",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetMessageResponse"
+                                },
+                                "example": {
+                                    "data": {
+                                        "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                        "recipient": "40752******",
+                                        "body": "Mesaje de test anonimizat ***",
+                                        "parts": 1,
+                                        "created_at": "2024-09-20T12:48:55.000000Z",
+                                        "scheduled_at": "2024-09-20T12:48:55.000000Z",
+                                        "sent_at": "2024-09-20T12:49:07.000000Z",
+                                        "delivered_at": null,
+                                        "callback_url": "https://yoursite.com/your-callback-url",
+                                        "status": "sent",
+                                        "sender": "CALISERO"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a message",
+                "operationId": "deleteMessage",
+                "tags": [
+                    "Messages"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "messageId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the message",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                },
+                                "example": {}
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/403ForbiddenDelete"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            }
+        },
+        "/opt-outs": {
+            "get": {
+                "summary": "Retrieve a list of opt-outs",
+                "operationId": "listOptOuts",
+                "tags": [
+                    "Opt-outs"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number for pagination",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of opt-outs",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaginatedOptOuts"
+                                },
+                                "example": {
+                                    "data": [
+                                        {
+                                            "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                            "phone": "40752******",
+                                            "reason": "User requested opt-out",
+                                            "created_at": "2024-09-20T12:48:55.000000Z",
+                                            "updated_at": "2024-09-20T12:48:55.000000Z"
+                                        }
+                                    ],
+                                    "links": {
+                                        "first": "https://rest.calisero.ro/api/v1/opt-outs?page=1",
+                                        "last": null,
+                                        "prev": null,
+                                        "next": "https://rest.calisero.ro/api/v1/opt-outs?page=2"
+                                    },
+                                    "meta": {
+                                        "current_page": 1,
+                                        "from": 1,
+                                        "path": "https://rest.calisero.ro/api/v1/opt-outs",
+                                        "per_page": 50,
+                                        "to": 50
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a new opt-out",
+                "operationId": "createOptOut",
+                "tags": [
+                    "Opt-outs"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateOptOutRequest"
+                            },
+                            "example": {
+                                "phone": "40752******",
+                                "reason": "User requested opt-out"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Opt-out created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CreateOptOutResponse"
+                                },
+                                "example": {
+                                    "data": {
+                                        "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                        "phone": "40752******",
+                                        "reason": "User requested opt-out",
+                                        "created_at": "2024-09-20T12:48:55.000000Z",
+                                        "updated_at": "2024-09-20T12:48:55.000000Z"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            }
+        },
+        "/opt-outs/{optOutId}": {
+            "get": {
+                "summary": "Retrieve a single opt-out",
+                "operationId": "getOptOut",
+                "tags": [
+                    "Opt-outs"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "optOutId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the opt-out",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Opt-out details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetOptOutResponse"
+                                },
+                                "example": {
+                                    "data": {
+                                        "id": "9d0e0bd3-c805-4dd0-bafb-07c5ded0a8e1",
+                                        "phone": "40752******",
+                                        "reason": "User requested opt-out",
+                                        "created_at": "2024-09-20T12:48:55.000000Z",
+                                        "updated_at": "2024-09-20T12:48:55.000000Z"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            },
+            "put": {
+                "summary": "Update an opt-out",
+                "operationId": "updateOptOut",
+                "tags": [
+                    "Opt-outs"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "optOutId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the opt-out",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateOptOutRequest"
+                            },
+                            "example": {
+                                "phone": "40752******",
+                                "reason": "Updated reason"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Opt-out updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GetOptOutResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/422ValidationError"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete an opt-out",
+                "operationId": "deleteOptOut",
+                "tags": [
+                    "Opt-outs"
+                ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "optOutId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the opt-out",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Opt-out deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {}
+                                },
+                                "example": {}
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/401Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/404NotFound"
+                    },
+                    "405": {
+                        "$ref": "#/components/responses/405MethodNotAllowed"
+                    },
+                    "500": {
+                        "$ref": "#/components/responses/500InternalServerError"
+                    }
+                }
+            }
+        },
+        "/verifications": {
+            "get": {
+                "summary": "Retrieve a list of verifications",
+                "operationId": "listVerifications",
+                "tags": [
+                    "Verifications"
+                ],
+                "security": [
+                    { "BearerAuth": [] }
+                ],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "description": "Page number for pagination",
+                        "schema": { "type": "integer", "default": 1, "minimum": 1 }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter by verification status",
+                        "schema": { "type": "string", "enum": ["verified", "unverified"] }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of verifications",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/PaginatedVerifications" },
+                                "example": {
+                                    "data": [
+                                        {
+                                            "id": "019a62f1-66b7-7387-a64f-2742c12a2860",
+                                            "phone": "+40742**350",
+                                            "brand": "Calisero",
+                                            "status": "verified",
+                                            "template": null,
+                                            "created_at": "2025-11-08T10:09:38.000000Z",
+                                            "expires_at": "2025-11-08T10:12:38.000000Z",
+                                            "verified_at": "2025-11-08T10:10:18.000000Z",
+                                            "attempts": 1,
+                                            "expired": false
+                                        }
+                                    ],
+                                    "links": {
+                                        "first": "https://rest.calisero.ro/api/v1/verifications?page=1",
+                                        "last": null,
+                                        "prev": null,
+                                        "next": "https://rest.calisero.ro/api/v1/verifications?page=2"
+                                    },
+                                    "meta": {
+                                        "current_page": 1,
+                                        "from": 1,
+                                        "path": "https://rest.calisero.ro/api/v1/verifications",
+                                        "per_page": 50,
+                                        "to": 50
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/401Unauthorized" },
+                    "403": { "$ref": "#/components/responses/403Forbidden" },
+                    "405": { "$ref": "#/components/responses/405MethodNotAllowed" },
+                    "500": { "$ref": "#/components/responses/500InternalServerError" }
+                }
+            },
+            "post": {
+                "summary": "Create a new verification request",
+                "operationId": "createVerification",
+                "tags": [
+                    "Verifications"
+                ],
+                "security": [
+                    { "BearerAuth": [] }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/CreateVerificationRequest" },
+                            "example": {
+                                "phone": "+40742**350",
+                                "brand": "Calisero"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Verification created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/CreateVerificationResponse" },
+                                "example": {
+                                    "data": {
+                                        "id": "019a62f1-66b7-7387-a64f-2742c12a2860",
+                                        "phone": "+40742**350",
+                                        "brand": "Calisero",
+                                        "status": "unverified",
+                                        "template": null,
+                                        "created_at": "2025-11-08T10:09:38.000000Z",
+                                        "expires_at": "2025-11-08T10:12:38.000000Z",
+                                        "verified_at": null,
+                                        "attempts": 0,
+                                        "expired": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/401Unauthorized" },
+                    "403": { "$ref": "#/components/responses/403Forbidden" },
+                    "405": { "$ref": "#/components/responses/405MethodNotAllowed" },
+                    "422": { "$ref": "#/components/responses/422ValidationError" },
+                    "500": { "$ref": "#/components/responses/500InternalServerError" }
+                }
+            }
+        },
+        "/verifications/{verificationId}": {
+            "get": {
+                "summary": "Retrieve a single verification",
+                "operationId": "getVerification",
+                "tags": [
+                    "Verifications"
+                ],
+                "security": [
+                    { "BearerAuth": [] }
+                ],
+                "parameters": [
+                    {
+                        "name": "verificationId",
+                        "in": "path",
+                        "required": true,
+                        "description": "The UUID of the verification",
+                        "schema": { "type": "string", "format": "uuid" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verification details",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/GetVerificationResponse" },
+                                "example": {
+                                    "data": {
+                                        "id": "019a62f1-66b7-7387-a64f-2742c12a2860",
+                                        "phone": "+40742**350",
+                                        "brand": "Calisero",
+                                        "status": "verified",
+                                        "template": null,
+                                        "created_at": "2025-11-08T10:09:38.000000Z",
+                                        "expires_at": "2025-11-08T10:12:38.000000Z",
+                                        "verified_at": "2025-11-08T10:10:18.000000Z",
+                                        "attempts": 1,
+                                        "expired": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/401Unauthorized" },
+                    "403": { "$ref": "#/components/responses/403Forbidden" },
+                    "404": { "$ref": "#/components/responses/404NotFound" },
+                    "405": { "$ref": "#/components/responses/405MethodNotAllowed" },
+                    "500": { "$ref": "#/components/responses/500InternalServerError" }
+                }
+            }
+        },
+        "/verifications/validate": {
+            "put": {
+                "summary": "Verify a code (OTP) for a phone number",
+                "operationId": "validateVerificationPost",
+                "tags": [
+                    "Verifications"
+                ],
+                "security": [
+                    { "BearerAuth": [] }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": { "$ref": "#/components/schemas/VerificationCheckRequest" },
+                            "example": {
+                                "phone": "+40742**350",
+                                "code": "SBMH0f"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Phone number verified successfully (idempotent if already verified)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/GetVerificationResponse" },
+                                "example": {
+                                    "data": {
+                                        "id": "019a62f1-66b7-7387-a64f-2742c12a2860",
+                                        "phone": "+40742**350",
+                                        "brand": "Calisero",
+                                        "status": "verified",
+                                        "template": null,
+                                        "created_at": "2025-11-08T10:09:38.000000Z",
+                                        "expires_at": "2025-11-08T10:12:38.000000Z",
+                                        "verified_at": "2025-11-08T10:10:18.000000Z",
+                                        "attempts": 1,
+                                        "expired": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/401Unauthorized" },
+                    "403": { "$ref": "#/components/responses/403Forbidden" },
+                    "404": { "$ref": "#/components/responses/404NotFound" },
+                    "405": { "$ref": "#/components/responses/405MethodNotAllowed" },
+                    "422": {
+                        "description": "Validation errors (e.g., code incorrect, expired, attempts exceeded)",
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/ValidationErrorResponse" },
+                                "examples": {
+                                    "code_incorrect": {
+                                        "summary": "Incorrect code",
+                                        "value": {
+                                            "message": "The validation code is incorrect.",
+                                            "errors": { "code": ["The validation code is incorrect."] }
+                                        }
+                                    },
+                                    "code_expired": {
+                                        "summary": "Expired code",
+                                        "value": {
+                                            "message": "The validation code has expired.",
+                                            "errors": { "code": ["The validation code has expired."] }
+                                        }
+                                    },
+                                    "attempts_exceeded": {
+                                        "summary": "Max attempts exceeded",
+                                        "value": {
+                                            "message": "The maximum number of verification attempts has been exceeded.",
+                                            "errors": { "code": ["The maximum number of verification attempts has been exceeded."] }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": { "$ref": "#/components/responses/500InternalServerError" }
+                }
+            }
+        },
+        "https://yoursite.com/your-callback-url": {
+            "post": {
+                "summary": "Delivery status webhook (Calisero -> Client)",
+                "operationId": "deliveryStatusWebhook",
+                "tags": [
+                    "Webhooks (Callbacks)"
+                ],
+                "description": "Calisero sends delivery status updates to the callback URL you provide when creating a message (`callback_url`). This path documents the JSON payload you should expect to receive. Your endpoint must return any 2xx status code to acknowledge receipt. If a non-2xx status is returned, the delivery notification may be retried.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DeliveryWebhookMessage"
+                            },
+                            "example": {
+                                "price": 0.0378,
+                                "sender": "CALISERO",
+                                "sentAt": "2025-09-19T12:01:15.000000Z",
+                                "status": "delivered",
+                                "messageId": "019961db-14a7-7348-963f-5a7a789a969f",
+                                "recipient": "+40742**350",
+                                "scheduleAt": "2025-09-19T12:02:51.000000Z",
+                                "deliveredAt": "2025-09-19T12:02:53.000000Z",
+                                "remainingBalance": 999.392
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "responses": {
+            "401Unauthorized": {
+                "description": "Unauthorized - Invalid or missing Bearer token",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "Unauthenticated."
+                        }
+                    }
+                }
+            },
+            "403Forbidden": {
+                "description": "Forbidden - Insufficient permissions",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "You don't have permission to access this resource."
+                        }
+                    }
+                }
+            },
+            "403ForbiddenDelete": {
+                "description": "Forbidden - Not authorized or resource not deletable",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "You are not authorized to delete this resource or the resource has been queued, sent or delivered"
+                        }
+                    }
+                }
+            },
+            "404NotFound": {
+                "description": "Resource not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "Resource not found!"
+                        }
+                    }
+                }
+            },
+            "405MethodNotAllowed": {
+                "description": "Method not allowed",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "This method is not supported for the requested route."
+                        }
+                    }
+                }
+            },
+            "422ValidationError": {
+                "description": "Validation error (e.g., missing required fields)",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ValidationErrorResponse"
+                        },
+                        "example": {
+                            "message": "The recipient field is required.",
+                            "errors": {
+                                "recipient": [
+                                    "The recipient field is required."
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            "500InternalServerError": {
+                "description": "Internal server error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        },
+                        "example": {
+                            "message": "Internal server error!"
+                        }
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "CreateMessageRequest": {
+                "type": "object",
+                "properties": {
+                    "recipient": {
+                        "type": "string",
+                        "description": "Recipient's phone number (in E.164 format)"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Text body of the message",
+                        "maxLength": 1600
+                    },
+                    "visible_body": {
+                        "type": "string",
+                        "description": "Visible body for display purposes",
+                        "maxLength": 1600,
+                        "nullable": true
+                    },
+                    "validity": {
+                        "type": "integer",
+                        "description": "Message validity period in hours",
+                        "minimum": 0,
+                        "nullable": true
+                    },
+                    "schedule_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Scheduled send time in 'YYYY-MM-DD HH:MM:SS' format",
+                        "nullable": true
+                    },
+                    "callback_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true,
+                        "description": "Optional callback URL to receive delivery reports"
+                    },
+                    "sender": {
+                        "type": "string",
+                        "description": "Sender name or phone number",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "recipient",
+                    "body"
+                ]
+            },
+            "CreateOptOutRequest": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string",
+                        "description": "Phone number to opt-out (in E.164 format)"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reason for opt-out",
+                        "maxLength": 600,
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "phone"
+                ]
+            },
+            "UpdateOptOutRequest": {
+                "type": "object",
+                "properties": {
+                    "phone": {
+                        "type": "string",
+                        "description": "Phone number to opt-out (in E.164 format)"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reason for opt-out",
+                        "maxLength": 600,
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "phone"
+                ]
+            },
+            "Message": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "recipient": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "parts": {
+                        "type": "integer",
+                        "description": "Number of SMS parts"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "sent_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "delivered_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "callback_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Current status (e.g., scheduled, sent, failed)"
+                    },
+                    "sender": {
+                        "type": "string",
+                        "description": "Sender name or phone number",
+                        "nullable": true
+                    }
+                }
+            },
+            "OptOut": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Phone number that opted out"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Reason for opt-out",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "Account": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Unique account code"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Account name"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Account description",
+                        "nullable": true
+                    },
+                    "fiscal_code": {
+                        "type": "string",
+                        "description": "Fiscal registration code",
+                        "nullable": true
+                    },
+                    "registry_number": {
+                        "type": "string",
+                        "description": "Company registry number",
+                        "nullable": true
+                    },
+                    "iban": {
+                        "type": "string",
+                        "description": "International Bank Account Number",
+                        "nullable": true
+                    },
+                    "city": {
+                        "type": "string",
+                        "description": "City"
+                    },
+                    "state": {
+                        "type": "string",
+                        "description": "State/Province"
+                    },
+                    "country": {
+                        "type": "string",
+                        "description": "Country code"
+                    },
+                    "address": {
+                        "type": "string",
+                        "description": "Street address"
+                    },
+                    "postal_code": {
+                        "type": "integer",
+                        "description": "Postal/ZIP code",
+                        "nullable": true
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "description": "Contact email",
+                        "nullable": true
+                    },
+                    "phone": {
+                        "type": "string",
+                        "description": "Contact phone number",
+                        "nullable": true
+                    },
+                    "contact_person": {
+                        "type": "string",
+                        "description": "Contact person name",
+                        "nullable": true
+                    },
+                    "credit": {
+                        "type": "number",
+                        "format": "float",
+                        "description": "Account credit balance"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Account status"
+                    },
+                    "sandbox": {
+                        "type": "boolean",
+                        "description": "Whether this is a sandbox account"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "CreateMessageResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Message"
+                    }
+                }
+            },
+            "GetMessageResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Message"
+                    }
+                }
+            },
+            "CreateOptOutResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/OptOut"
+                    }
+                }
+            },
+            "GetOptOutResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/OptOut"
+                    }
+                }
+            },
+            "GetAccountResponse": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/Account"
+                    }
+                }
+            },
+            "PaginatedMessages": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Message"
+                        }
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "first": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "last": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "prev": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "next": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "properties": {
+                            "current_page": {
+                                "type": "integer"
+                            },
+                            "from": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "path": {
+                                "type": "string"
+                            },
+                            "per_page": {
+                                "type": "integer"
+                            },
+                            "to": {
+                                "type": "integer",
+                                "nullable": true
+                            }
+                        }
+                    }
+                }
+            },
+            "PaginatedOptOuts": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OptOut"
+                        }
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "first": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "last": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "prev": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            },
+                            "next": {
+                                "type": "string",
+                                "format": "uri",
+                                "nullable": true
+                            }
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "properties": {
+                            "current_page": {
+                                "type": "integer"
+                            },
+                            "from": {
+                                "type": "integer",
+                                "nullable": true
+                            },
+                            "path": {
+                                "type": "string"
+                            },
+                            "per_page": {
+                                "type": "integer"
+                            },
+                            "to": {
+                                "type": "integer",
+                                "nullable": true
+                            }
+                        }
+                    }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Error or status message"
+                    }
+                }
+            },
+            "ValidationErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Short description of the validation error"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "description": "Detailed field validation errors",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "Verification": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "phone": { "type": "string", "description": "Phone number to verify (E.164 format)" },
+                    "brand": { "type": "string", "nullable": true, "description": "Brand to be used in default message template if custom template not provided" },
+                    "status": { "type": "string", "enum": ["verified", "unverified"], "description": "Verification status" },
+                    "template": { "type": "string", "nullable": true, "description": "Custom SMS template containing {code}" },
+                    "created_at": { "type": "string", "format": "date-time" },
+                    "expires_at": { "type": "string", "format": "date-time" },
+                    "verified_at": { "type": "string", "format": "date-time", "nullable": true },
+                    "attempts": { "type": "integer", "minimum": 0 },
+                    "expired": { "type": "boolean" }
+                }
+            },
+            "CreateVerificationRequest": {
+                "type": "object",
+                "properties": {
+                    "phone": { "type": "string", "description": "Phone number to verify (E.164 format)" },
+                    "brand": { "type": "string", "nullable": true, "maxLength": 120, "description": "Brand used in default message when template is not provided" },
+                    "template": { "type": "string", "nullable": true, "maxLength": 600, "description": "Custom SMS template that MUST include {code}" },
+                    "expires_in": { "type": "integer", "nullable": true, "minimum": 1, "maximum": 10, "description": "OTP validity in minutes (1-10). Default 5." }
+                },
+                "required": ["phone"]
+            },
+            "VerificationCheckRequest": {
+                "type": "object",
+                "properties": {
+                    "phone": { "type": "string", "description": "Phone number to verify (E.164 format)" },
+                    "code": { "type": "string", "minLength": 6, "maxLength": 6, "description": "6 character OTP code (case-insensitive)" }
+                },
+                "required": ["phone", "code"]
+            },
+            "CreateVerificationResponse": {
+                "type": "object",
+                "properties": {
+                    "data": { "$ref": "#/components/schemas/Verification" }
+                }
+            },
+            "GetVerificationResponse": {
+                "type": "object",
+                "properties": {
+                    "data": { "$ref": "#/components/schemas/Verification" }
+                }
+            },
+            "PaginatedVerifications": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Verification" }
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "first": { "type": "string", "format": "uri", "nullable": true },
+                            "last": { "type": "string", "format": "uri", "nullable": true },
+                            "prev": { "type": "string", "format": "uri", "nullable": true },
+                            "next": { "type": "string", "format": "uri", "nullable": true }
+                        }
+                    },
+                    "meta": {
+                        "type": "object",
+                        "properties": {
+                            "current_page": { "type": "integer" },
+                            "from": { "type": "integer", "nullable": true },
+                            "path": { "type": "string" },
+                            "per_page": { "type": "integer" },
+                            "to": { "type": "integer", "nullable": true }
+                        }
+                    }
+                }
+            },
+            "DeliveryWebhookMessage": {
+                "type": "object",
+                "description": "Payload sent by Calisero to the provided callback URL when a message status changes.",
+                "properties": {
+                    "price": {"type": "number", "format": "float", "description": "Price charged for the message part(s)."},
+                    "sender": {"type": "string", "description": "Sender ID or phone number."},
+                    "status": {"type": "string", "enum": ["sent", "delivered", "undelivered"], "description": "Delivery status."},
+                    "messageId": {"type": "string", "format": "uuid", "description": "Unique identifier of the message."},
+                    "recipient": {"type": "string", "description": "Recipient MSISDN in E.164 format."},
+                    "sentAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Timestamp when the message was sent to the network (present for statuses sent or delivered)."},
+                    "deliveredAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Timestamp when the handset confirmed delivery (present only for delivered)."},
+                    "scheduleAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Original scheduled sending time if the message was scheduled."},
+                    "remainingBalance": {"type": "number", "format": "float", "nullable": true, "description": "Remaining account balance after billing (if available)."}
+                },
+                "required": ["price", "sender", "status", "messageId", "recipient"]
+            }
+        }
+    }
+}
