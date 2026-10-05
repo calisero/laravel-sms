@@ -178,7 +178,7 @@ vendor/bin/phpunit --filter test_it_fails_for_invalid_numbers
 ## 9. Performance & Reliability Considerations
 - Avoid unnecessary API calls inside loops—batch or move outside when feasible.
 - Validate inputs early; fail fast with clear exceptions.
-- When adding retry logic, ensure idempotency keys are enforced.
+- Do not retry `POST /messages` or `POST /verifications` on a timeout: the API takes no idempotency key, so a retry can send the message twice.
 
 ---
 ## 10. Pull Request Checklist

@@ -21,6 +21,8 @@ class RecordingSmsClient implements SmsClient
     /** @var array<string, mixed>|null */
     public ?array $lastParams = null;
 
+    public ?CreateMessageResponse $lastResponse = null;
+
     /**
      * @param array<string, mixed> $params
      */
@@ -28,7 +30,7 @@ class RecordingSmsClient implements SmsClient
     {
         $this->lastParams = $params;
 
-        return new CreateMessageResponse(new Message(
+        return $this->lastResponse = new CreateMessageResponse(new Message(
             id: 'recorded-id',
             recipient: (string) ($params['to'] ?? ''),
             body: (string) ($params['text'] ?? ''),

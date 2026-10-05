@@ -2,18 +2,14 @@
 
 namespace Calisero\LaravelSms\Console\Commands;
 
+use Calisero\LaravelSms\Console\Concerns\RendersApiOutput;
 use Calisero\LaravelSms\Contracts\SmsClient;
-use Calisero\Sms\Exceptions\ApiException;
-use Calisero\Sms\Exceptions\ForbiddenException;
-use Calisero\Sms\Exceptions\NotFoundException;
-use Calisero\Sms\Exceptions\RateLimitedException;
-use Calisero\Sms\Exceptions\ServerException;
-use Calisero\Sms\Exceptions\UnauthorizedException;
-use Calisero\Sms\Exceptions\ValidationException;
 use Illuminate\Console\Command;
 
 class StatusSmsCommand extends Command
 {
+    use RendersApiOutput;
+
     protected $signature = 'calisero:sms:status {id : The SMS message ID}';
 
     protected $description = 'Fetch and display the status and details of an SMS message';
@@ -50,40 +46,14 @@ class StatusSmsCommand extends Command
                     ['Callback URL', $message->getCallbackUrl() ?? '—'],
                 ]
             );
+            $this->renderShortenedUrls($message->getShortenedUrls());
 
             // Quick status summary line
             $this->line('Status: '. $message->getStatus());
 
             return self::SUCCESS;
-        } catch (NotFoundException $e) {
-            $this->error('✗ Message not found: '.$e->getMessage());
-
-            return self::FAILURE;
-        } catch (ValidationException $e) {
-            $this->error('✗ Validation error: '.$e->getMessage());
-
-            return self::FAILURE;
-        } catch (RateLimitedException $e) {
-            $this->error('✗ Rate limited: '.$e->getMessage());
-            $this->line('Retry after seconds: '.($e->getRetryAfter() ?? 'unknown'));
-
-            return self::FAILURE;
-        } catch (UnauthorizedException|ForbiddenException $e) {
-            $this->error('✗ Auth/permission error: '.$e->getMessage());
-
-            return self::FAILURE;
-        } catch (ServerException $e) {
-            $this->error('✗ Server error: '.$e->getMessage());
-
-            return self::FAILURE;
-        } catch (ApiException $e) {
-            $this->error('✗ API error: '.$e->getMessage().' (status: '.$e->getStatusCode().', request: '.$e->getRequestId().')');
-
-            return self::FAILURE;
         } catch (\Throwable $e) {
-            $this->error('✗ Failed to retrieve message: '.$e->getMessage());
-
-            return self::FAILURE;
+            return $this->renderFailure($e, 'Message not found');
         }
     }
 }

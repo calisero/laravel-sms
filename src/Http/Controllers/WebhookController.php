@@ -4,6 +4,7 @@ namespace Calisero\LaravelSms\Http\Controllers;
 
 use Calisero\LaravelSms\Events\CreditCritical;
 use Calisero\LaravelSms\Events\CreditLow;
+use Calisero\LaravelSms\Events\DailyLimitLow;
 use Calisero\LaravelSms\Events\MessageDelivered;
 use Calisero\LaravelSms\Events\MessageFailed;
 use Calisero\LaravelSms\Events\MessageSent;
@@ -26,12 +27,15 @@ class WebhookController extends Controller
      *   "price": 0.0378,
      *   "sender": "CALISERO",
      *   "sentAt": "2025-09-19T11:59:44.000000Z", // only for sent and delivered
-     *   "status": "sent" | "delivered" | "failed",
+     *   "status": "sent" | "delivered" | "undelivered",
      *   "messageId": "019961d8-3338-700c-be17-10d061f03a5c",
      *   "recipient": "+40742***350",
      *   "scheduleAt": "2025-09-19T11:59:42.000000Z",
      *   "deliveredAt": "2025-09-19T12:00:24.000000Z", // only for delivered
-     *   "remainingBalance": 999.43
+     *   "remainingBalance": 999.43,
+     *   "dailyLimit": 1000, // null when the account has no daily limit
+     *   "dailyRemaining": 588, // null when the account has no daily limit
+     *   "sentToday": 412
      * }
      */
     public function handle(Request $request): JsonResponse
@@ -43,7 +47,9 @@ class WebhookController extends Controller
 
         if ('delivered' === $status) {
             Event::dispatch(new MessageDelivered($payload));
-        } elseif ('failed' === $status) {
+        } elseif ('undelivered' === $status || 'failed' === $status) {
+            // The API reports a failed delivery as undelivered; failed is kept for
+            // callers that post it themselves.
             Event::dispatch(new MessageFailed($payload));
         } elseif ('sent' === $status) {
             Event::dispatch(new MessageSent($payload));
@@ -64,6 +70,20 @@ class WebhookController extends Controller
             }
         }
 
+        // Daily sending limit monitoring (optional); both are null while the
+        // account has no daily limit
+        $dailyLimit = $this->toIntOrNull($payload['dailyLimit'] ?? null);
+        $dailyRemaining = $this->toIntOrNull($payload['dailyRemaining'] ?? null);
+        $dailyLow = $this->toIntOrNull(config('calisero.daily_limit.low_threshold'));
+
+        if (null !== $dailyLimit && null !== $dailyRemaining && null !== $dailyLow && $dailyRemaining <= $dailyLow) {
+            Event::dispatch(new DailyLimitLow(
+                $dailyLimit,
+                $dailyRemaining,
+                $this->toIntOrNull($payload['sentToday'] ?? null)
+            ));
+        }
+
         return response()->json(['ok' => true]);
     }
 
@@ -71,6 +91,22 @@ class WebhookController extends Controller
     {
         if (is_numeric($value)) {
             return (float) $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * An integer, or a string of digits as the environment gives thresholds.
+     */
+    private function toIntOrNull(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && 1 === preg_match('/^\d+$/', $value)) {
+            return (int) $value;
         }
 
         return null;

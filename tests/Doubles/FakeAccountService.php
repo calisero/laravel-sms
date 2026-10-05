@@ -8,14 +8,18 @@ use Calisero\Sms\Dto\Account;
 use Calisero\Sms\Dto\GetAccountResponse;
 
 /**
- * Stand-in for the SDK's AccountService that returns a fixed credit balance.
+ * Stand-in for the SDK's AccountService that returns a fixed credit balance and,
+ * optionally, a daily sending limit.
  */
 class FakeAccountService
 {
     public ?string $lastRetrievedId = null;
 
     public function __construct(
-        private float $credit = 0.0
+        private float $credit = 0.0,
+        private ?int $dailyLimit = null,
+        private ?int $dailyRemaining = null,
+        private int $sentToday = 0
     ) {
     }
 
@@ -43,6 +47,9 @@ class FakeAccountService
             status: 'active',
             sandbox: true,
             createdAt: '2026-01-01T00:00:00.000000Z',
+            dailyLimit: $this->dailyLimit,
+            dailyRemaining: $this->dailyRemaining,
+            sentToday: $this->sentToday,
         ));
     }
 }

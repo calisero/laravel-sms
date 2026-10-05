@@ -6,6 +6,7 @@ namespace Calisero\LaravelSms\Tests\Unit;
 
 use Calisero\LaravelSms\Events\CreditCritical;
 use Calisero\LaravelSms\Events\CreditLow;
+use Calisero\LaravelSms\Events\DailyLimitLow;
 use Calisero\LaravelSms\Events\MessageDelivered;
 use Calisero\LaravelSms\Events\MessageFailed;
 use Calisero\LaravelSms\Events\MessageSent;
@@ -47,6 +48,9 @@ class WebhookControllerTest extends TestCase
     public static function statusEvents(): iterable
     {
         yield 'delivered' => ['delivered', MessageDelivered::class];
+        // Regression: the API reports a failed delivery as undelivered, which used to
+        // dispatch nothing
+        yield 'undelivered' => ['undelivered', MessageFailed::class];
         yield 'failed' => ['failed', MessageFailed::class];
         yield 'sent' => ['sent', MessageSent::class];
     }
@@ -183,6 +187,93 @@ class WebhookControllerTest extends TestCase
 
         Event::assertDispatched(CreditLow::class, fn ($e) => 450.0 === $e->remainingBalance);
         Event::assertNotDispatched(CreditCritical::class);
+    }
+
+    public function test_the_event_reads_the_payload_with_the_sdk(): void
+    {
+        Event::fake();
+
+        $this->postWebhook($this->webhookPayload([
+            'status' => 'delivered',
+            'messageId' => 'uuid-typed',
+            'deliveredAt' => '2026-01-01T12:00:24.000000Z',
+            'dailyLimit' => 1000,
+            'dailyRemaining' => 588,
+            'sentToday' => 412,
+        ]))->assertOk();
+
+        Event::assertDispatched(MessageDelivered::class, function (MessageDelivered $event): bool {
+            $message = $event->message();
+
+            return null !== $message
+                && 'uuid-typed' === $message->getMessageId()
+                && 'delivered' === $message->getStatus()
+                && '2026-01-01T12:00:24.000000Z' === $message->getDeliveredAt()
+                && 0.0378 === $message->getPrice()
+                && 1000 === $message->getDailyLimit()
+                && 588 === $message->getDailyRemaining()
+                && 412 === $message->getSentToday();
+        });
+    }
+
+    public function test_the_event_has_no_typed_payload_when_a_required_field_is_missing(): void
+    {
+        Event::fake();
+
+        $payload = $this->webhookPayload(['status' => 'sent']);
+        unset($payload['messageId']);
+
+        $this->postWebhook($payload)->assertOk();
+
+        Event::assertDispatched(MessageSent::class, fn (MessageSent $event): bool => null === $event->message()
+            && 'sent' === $event->messageData['status']);
+    }
+
+    public function test_it_dispatches_the_daily_limit_event_at_or_below_the_threshold(): void
+    {
+        Event::fake();
+        config()->set('calisero.daily_limit.low_threshold', 100);
+
+        $this->postWebhook($this->webhookPayload(['dailyLimit' => 1000, 'dailyRemaining' => 100, 'sentToday' => 900]))->assertOk();
+
+        Event::assertDispatched(DailyLimitLow::class, fn (DailyLimitLow $e): bool => 1000 === $e->dailyLimit
+            && 100 === $e->dailyRemaining
+            && 900 === $e->sentToday);
+    }
+
+    public function test_it_dispatches_the_daily_limit_event_once_the_limit_is_used_up(): void
+    {
+        Event::fake();
+        config()->set('calisero.daily_limit.low_threshold', '50'); // as the environment gives it
+
+        $this->postWebhook($this->webhookPayload(['dailyLimit' => 1000, 'dailyRemaining' => 0, 'sentToday' => 1000]))->assertOk();
+
+        Event::assertDispatched(DailyLimitLow::class, fn (DailyLimitLow $e): bool => 0 === $e->dailyRemaining);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    #[DataProvider('noDailyLimitEvent')]
+    public function test_it_dispatches_no_daily_limit_event(mixed $threshold, array $payload): void
+    {
+        Event::fake();
+        config()->set('calisero.daily_limit.low_threshold', $threshold);
+
+        $this->postWebhook($this->webhookPayload($payload))->assertOk();
+
+        Event::assertNotDispatched(DailyLimitLow::class);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, array<string, mixed>}>
+     */
+    public static function noDailyLimitEvent(): iterable
+    {
+        yield 'above the threshold' => [100, ['dailyLimit' => 1000, 'dailyRemaining' => 101]];
+        yield 'the monitoring is disabled' => [null, ['dailyLimit' => 1000, 'dailyRemaining' => 0]];
+        yield 'the account has no daily limit' => [100, ['dailyLimit' => null, 'dailyRemaining' => null]];
+        yield 'values that are not counts' => [100, ['dailyLimit' => 'n/a', 'dailyRemaining' => -1]];
     }
 
     private function setCreditThresholds(?float $low, ?float $critical): void

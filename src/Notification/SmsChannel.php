@@ -3,6 +3,7 @@
 namespace Calisero\LaravelSms\Notification;
 
 use Calisero\LaravelSms\Contracts\SmsClient;
+use Calisero\Sms\Dto\CreateMessageResponse;
 use Illuminate\Notifications\Notification;
 
 class SmsChannel
@@ -15,22 +16,25 @@ class SmsChannel
     /**
      * Send the given notification.
      *
+     * Returns the API's answer, which Laravel hands to NotificationSent listeners
+     * as $event->response; null when nothing was sent.
+     *
      * @param mixed $notifiable
      * @param \Illuminate\Notifications\Notification $notification
-     * @return void
+     * @return \Calisero\Sms\Dto\CreateMessageResponse|null
      */
-    public function send($notifiable, Notification $notification): void
+    public function send($notifiable, Notification $notification): ?CreateMessageResponse
     {
         $message = $notification->toCalisero($notifiable);
 
         if (! $message) {
-            return;
+            return null;
         }
 
         $to = $this->getTo($notifiable, $notification, $message);
 
         if (! $to) {
-            return;
+            return null;
         }
 
         $params = [
@@ -50,7 +54,23 @@ class SmsChannel
             $params['idempotency_key'] = $message->idempotencyKey;
         }
 
-        $this->client->sendSms($params);
+        if (null !== $message->shortenUrls) {
+            $params['shorten_urls'] = $message->shortenUrls;
+        }
+
+        if ($message->visibleBody) {
+            $params['visible_body'] = $message->visibleBody;
+        }
+
+        if (null !== $message->validity) {
+            $params['validity'] = $message->validity;
+        }
+
+        if ($message->callbackUrl) {
+            $params['callback_url'] = $message->callbackUrl;
+        }
+
+        return $this->client->sendSms($params);
     }
 
     /**

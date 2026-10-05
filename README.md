@@ -13,22 +13,25 @@ A first-class Laravel package that wraps the [Calisero PHP SDK](https://github.c
 
 - 🚀 **Laravel 12 & 13** ready with full support for the latest features
 - 📱 **Easy SMS sending** via Facade, Notification channels, or direct client usage
+- 🔗 **URL shortening** with click statistics for every link of a message
 - 🔐 **Two-Factor Authentication** with verification codes API
-- 🔒 **Webhook handling** with token-based security
+- 🔒 **Webhook handling** with token-based security and typed delivery events
+- 📈 **Daily sending limit & credit monitoring** through events and the account API
 - ✅ **Validation rules** for phone numbers (E.164) and sender IDs
 - 🎯 **Queue support** for reliable message delivery
 - 🧪 **Artisan commands** for testing and development
-- 📊 **Comprehensive logging** and error handling
+- 🧯 **Typed error handling**, with the trace ID of every failed request
 - 🏗️ **PSR-4 compliant** with full test coverage
 
 > Internal package logging was removed. Add your own logging in event listeners/subscribers.
 
 ## Requirements
 
-| Package version | Laravel | PHP |
-| --- | --- | --- |
-| `^1.2` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) |
-| `1.0.x` – `1.1.x` | 12.x | 8.2 – 8.4 |
+| Package version | Laravel | PHP | Calisero PHP SDK | Calisero API |
+| --- | --- | --- | --- | --- |
+| `^1.3` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3` | 1.0.14 |
+| `1.2.x` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.0` | 1.0.12 |
+| `1.0.x` – `1.1.x` | 12.x | 8.2 – 8.4 | `^2.0` | 1.0.12 |
 
 Composer picks the right Laravel release for your PHP version automatically: on PHP 8.2 you get
 Laravel 12, and on PHP 8.3, 8.4 or 8.5 you can run either Laravel 12 or 13.
@@ -56,14 +59,12 @@ Add your Calisero API credentials to your `.env` file:
 CALISERO_API_KEY=your-api-key-here
 CALISERO_BASE_URI=https://rest.calisero.ro/api/v1
 
-# Optional: Account ID for balance queries
+# Optional: Account ID for the account, balance and daily limit lookups
 CALISERO_ACCOUNT_ID=your-account-id
 
-# Optional: Connection Settings
+# Optional: Connection Settings (seconds)
 CALISERO_TIMEOUT=10.0
 CALISERO_CONNECT_TIMEOUT=3.0
-CALISERO_RETRIES=5
-CALISERO_RETRY_BACKOFF_MS=200
 
 # Optional: Webhook Configuration
 CALISERO_WEBHOOK_ENABLED=true
@@ -74,8 +75,8 @@ CALISERO_WEBHOOK_TOKEN=your-shared-secret
 CALISERO_CREDIT_LOW=500
 CALISERO_CREDIT_CRITICAL=100
 
-# Optional: Logging
-CALISERO_LOG_CHANNEL=default
+# Optional: Daily Sending Limit Monitoring
+CALISERO_DAILY_LIMIT_LOW=100
 ```
 
 ## Usage
@@ -92,6 +93,57 @@ $response = Calisero::sendSms([
     'text' => 'Hello from Laravel!',
     // 'from' => 'MyBrand' // Include ONLY if approved by Calisero
 ]);
+
+$message = $response->getData();
+echo $message->getId();     // keep it to match the delivery webhooks
+echo $message->getStatus(); // scheduled, sent...
+```
+
+#### Sending Options
+
+Every optional parameter accepts snake_case or camelCase (`shorten_urls` or `shortenUrls`):
+
+```php
+use Calisero\LaravelSms\Facades\Calisero;
+
+$response = Calisero::sendSms([
+    'to' => '+40712345678',
+    'text' => 'Your order shipped: https://shop.example.com/orders/123',
+    'from' => 'MyBrand',                     // an approved sender ID
+    'shorten_urls' => true,                  // replace the links with short ones
+    'schedule_at' => now()->addHour(),       // a date-time, or a 'Y-m-d H:i:s' string in Romania time
+    'validity' => 24,                        // hours
+    'visible_body' => 'Your order shipped',  // shown in the dashboard and the API instead of the text
+    'callback_url' => 'https://example.com/hooks/sms', // instead of the package webhook
+]);
+```
+
+- **`schedule_at`**: the API reads it as `Y-m-d H:i:s` in Romania time (`Europe/Bucharest`) and
+  refuses ISO 8601 strings such as `2026-10-05T10:00:00Z`. Pass a `DateTimeInterface` (a Carbon
+  instance, `now()->addHour()`…) and the package converts it for you; a string is sent as is.
+- **`shorten_urls`**: Calisero replaces the `http://` and `https://` links of the text with short ones
+  before sending. The short links, and how many times each was opened, come back on the message:
+
+```php
+foreach ($response->getData()->getShortenedUrls() as $link) {
+    echo $link->getOriginalLink() . ' -> ' . $link->getShortenedLink();
+}
+
+// Later, with click statistics
+$message = Calisero::getMessageStatus($messageId)->getData();
+foreach ($message->getShortenedUrls() as $link) {
+    echo $link->getShortenedLink() . ': ' . $link->getClickCount() . ' clicks, last ' . ($link->getLastClick() ?? 'never');
+}
+```
+
+- **What the answer reports**: `$response->getResponseMeta()` gives the request's trace ID and, while
+  the account has a daily sending limit, how many messages it can still send today:
+
+```php
+$meta = $response->getResponseMeta();
+$meta->getTraceId();        // quote it to Calisero support
+$meta->getDailyLimit();     // null when the account has no daily limit
+$meta->getDailyRemaining(); // what is left today, after this message
 ```
 
 #### Verification Codes (2FA)
@@ -116,7 +168,7 @@ $response = Calisero::sendVerification([
 ]);
 
 // The response includes expiration time
-echo "Code expires at: " . $response->expires_at;
+echo "Code expires at: " . $response->getData()->getExpiresAt();
 
 // Check/verify the code entered by user
 $result = Calisero::checkVerification([
@@ -124,7 +176,7 @@ $result = Calisero::checkVerification([
     'code' => '123456', // Code entered by user (6 characters)
 ]);
 
-if ('verified' === $result->status) {
+if ('verified' === $result->getData()->getStatus()) {
     // Code is valid, proceed with authentication
     echo "Verification successful!";
 } else {
@@ -134,6 +186,7 @@ if ('verified' === $result->status) {
 ```
 
 > **Note**: Either `brand` OR `template` is required when sending verification codes. The template must contain `{code}` placeholder. Codes are 6 characters and sent via SMS.
+> A verification code's SMS counts towards the account's [daily sending limit](#daily-sending-limit) like any other message.
 
 ### Using Notifications
 
@@ -157,6 +210,31 @@ class WelcomeNotification extends Notification
             ;
     }
 }
+```
+
+`SmsMessage` covers every sending option:
+
+```php
+SmsMessage::create('Track your order: https://shop.example.com/orders/123')
+    ->from('MyBrand')                       // an approved sender ID
+    ->to('+40712345678')                    // instead of the notifiable's number
+    ->shortenUrls()                         // replace the links with short ones
+    ->scheduleAt(now()->addHour())          // converted to Romania time
+    ->validity(24)                          // hours
+    ->visibleBody('Track your order')       // shown in the dashboard instead
+    ->callbackUrl('https://example.com/hooks/sms');
+```
+
+The channel returns the API's answer, so a `NotificationSent` listener can keep the message ID:
+
+```php
+use Illuminate\Notifications\Events\NotificationSent;
+
+Event::listen(function (NotificationSent $event) {
+    if ('calisero' === $event->channel && null !== $event->response) {
+        $messageId = $event->response->getData()->getId();
+    }
+});
 ```
 
 Send the notification:
@@ -189,17 +267,30 @@ class SmsService
 {
     public function __construct(private SmsClient $client) {}
 
-    public function sendWelcomeSms(string $phone): void
+    public function sendWelcomeSms(string $phone): string
     {
-        $this->client->sendSms([
+        return $this->client->sendSms([
             'to' => $phone,
             'text' => 'Welcome to our service!',
             'from' => 'MyApp',
-            'idempotencyKey' => 'welcome-' . uniqid(),
-        ]);
+        ])->getData()->getId();
     }
 }
 ```
+
+The client also reads messages and the account (`CALISERO_ACCOUNT_ID` is needed for the account):
+
+```php
+$client->getMessageStatus($messageId); // GetMessageResponse
+$client->listMessages(page: 2);        // PaginatedMessages
+$client->deleteMessage($messageId);    // only while it is still scheduled
+$client->getAccount();                 // Account: credit, status, daily limit
+$client->getBalance();                 // float, the account's credit
+```
+
+> The Calisero API takes no idempotency key, so `SmsMessage::idempotencyKey()` and an
+> `idempotency_key` parameter have no effect. The API refuses (422) the same message to the same
+> recipient sent again within a few seconds.
 
 ### Validation Rules
 
@@ -267,9 +358,27 @@ Event::listen(MessageFailed::class, fn (MessageFailed $e) => ...);
 ```
 
 Statuses currently emitted (lifecycle):
-- `sent` – the message was accepted and dispatched to the network
-- `delivered` – the handset/network confirmed delivery
-- `failed` – delivery permanently failed
+- `sent` → `MessageSent` – the message was accepted and dispatched to the network
+- `delivered` → `MessageDelivered` – the handset/network confirmed delivery
+- `undelivered` → `MessageFailed` – delivery permanently failed
+
+Each event carries the raw payload in `$event->messageData`, and `$event->message()` reads it with
+the SDK's `DeliveryWebhookMessage`, whose getters are typed (`null` when a required field is missing):
+
+```php
+Event::listen(MessageDelivered::class, function (MessageDelivered $event) {
+    $message = $event->message();
+
+    $message?->getMessageId();      // string
+    $message?->getDeliveredAt();    // ?string
+    $message?->getPrice();          // float
+    $message?->getDailyRemaining(); // ?int, null when the account has no daily limit
+});
+```
+
+Calisero retries a callback only when the connection fails or your endpoint does not answer
+within 2 seconds (at most 5 attempts); a non-2xx answer is not retried. Keep the endpoint fast:
+queue the work in your listeners (`ShouldQueue`).
 
 Webhook payload example (flat structure):
 ```json
@@ -282,9 +391,13 @@ Webhook payload example (flat structure):
   "recipient": "+40742***350",
   "scheduleAt": "2025-09-19T11:59:42.000000Z",
   "deliveredAt": null,
-  "remainingBalance": 999.43
+  "remainingBalance": 999.43,
+  "dailyLimit": 1000,
+  "dailyRemaining": 588,
+  "sentToday": 412
 }
 ```
+`dailyLimit` and `dailyRemaining` are `null` while the account has no daily sending limit.
 When the same message is later delivered you will receive another webhook with:
 ```json
 {
@@ -296,13 +409,16 @@ When the same message is later delivered you will receive another webhook with:
   "recipient": "+40742***350",
   "scheduleAt": "2025-09-19T11:59:42.000000Z",
   "deliveredAt": "2025-09-19T12:00:24.000000Z",
-  "remainingBalance": 999.43
+  "remainingBalance": 999.43,
+  "dailyLimit": 1000,
+  "dailyRemaining": 588,
+  "sentToday": 412
 }
 ```
-A failed attempt would have `"status": "failed"` and usually a `deliveredAt` of `null`.
+A failed delivery has `"status": "undelivered"` and a `deliveredAt` of `null`.
 
 #### Automatic callback_url Injection
-If `CALISERO_WEBHOOK_ENABLED=true`, every `sendSms()` call **without** an explicit `callback_url` (or `callbackUrl`) automatically includes one pointing to the named route `calisero.webhook` (if registered) or a URL built from `app.url` + the configured path.  
+If `CALISERO_WEBHOOK_ENABLED=true` (or `1`, `on`, `yes`), every `sendSms()` call **without** an explicit `callback_url` (or `callbackUrl`) automatically includes one pointing to the named route `calisero.webhook` (if registered) or a URL built from `app.url` + the configured path.  
 To override, supply your own `callback_url` parameter.  
 To disable injection, set `CALISERO_WEBHOOK_ENABLED=false` or omit the env variable.
 
@@ -329,11 +445,26 @@ The package provides several Artisan commands for testing and development:
 php artisan calisero:sms:test +40712345678 --from=YourApp --text="Test message"
 ```
 
+Options: `--from`, `--text`, `--visible-body`, `--validity` (hours), `--schedule-at`
+(`Y-m-d H:i:s`, Romania time), `--callback-url` and `--shorten-urls`. The result shows what is left
+of the daily sending limit and the trace ID; a refusal shows the API's message and the trace ID.
+
 #### SMS Status
 
 ```bash
 php artisan calisero:sms:status 019961d8-3338-700c-be17-10d061f03a5c
 ```
+
+Also lists the shortened links of the message with their click counts.
+
+#### Account
+
+```bash
+php artisan calisero:account
+```
+
+Shows the account of `CALISERO_ACCOUNT_ID`: credit, status, sandbox, and the daily sending limit
+with what is left of it today.
 
 #### Verification Commands
 
@@ -355,39 +486,32 @@ Check a verification code:
 php artisan calisero:verification:check +40712345678 123456
 ```
 
-#### Webhook Verification
-
-Verify webhook signatures offline:
-
-```bash
-php artisan calisero:webhook:verify "sha256=..." --payload='{"status":"delivered"}'
-```
-
 ## Environment Variables Reference
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `CALISERO_API_KEY` | **Yes** | - | Your Calisero API key from the dashboard |
 | `CALISERO_BASE_URI` | No | `https://rest.calisero.ro/api/v1` | Calisero API base URL |
-| `CALISERO_ACCOUNT_ID` | No | - | Your account ID for balance queries |
-| `CALISERO_TIMEOUT` | No | `10.0` | Request timeout in seconds |
-| `CALISERO_CONNECT_TIMEOUT` | No | `3.0` | Connection timeout in seconds |
-| `CALISERO_RETRIES` | No | `5` | Number of retry attempts |
-| `CALISERO_RETRY_BACKOFF_MS` | No | `200` | Backoff delay between retries (ms) |
-| `CALISERO_WEBHOOK_ENABLED` | No | `false` | Enable webhook handling |
+| `CALISERO_ACCOUNT_ID` | No | - | Your account ID, for `getAccount()`, `getBalance()` and `calisero:account` |
+| `CALISERO_TIMEOUT` | No | `10.0` | Request timeout in seconds (rounded up to whole seconds) |
+| `CALISERO_CONNECT_TIMEOUT` | No | `3.0` | Connection timeout in seconds (rounded up to whole seconds) |
+| `CALISERO_WEBHOOK_ENABLED` | No | `false` | Enable webhook handling (`true`, `1`, `on` or `yes`) |
 | `CALISERO_WEBHOOK_PATH` | No | `calisero/webhook` | Webhook endpoint path |
 | `CALISERO_WEBHOOK_TOKEN` | No | - | Shared secret for webhook authentication |
 | `CALISERO_CREDIT_LOW` | No | - | Credit threshold for low balance alerts |
 | `CALISERO_CREDIT_CRITICAL` | No | - | Credit threshold for critical balance alerts |
-| `CALISERO_LOG_CHANNEL` | No | `default` | Laravel log channel to use |
+| `CALISERO_DAILY_LIMIT_LOW` | No | - | Messages left today at or below which `DailyLimitLow` is dispatched |
 
 ## Advanced Configuration
 
 The configuration file (`config/calisero.php`) allows you to customize:
 
-- API connection settings (timeouts, retries, backoff)
-- Webhook path and middleware
-- Logging channel preferences
+- API connection settings (base URI, timeouts)
+- Webhook path, middleware and token
+- Credit and daily sending limit thresholds
+
+Requests are not retried automatically: the API takes no idempotency key, so retrying a send that
+timed out could deliver the message twice. Retry from your own job when it is safe to.
 
 ## Sender ID (Alphanumeric) Requirements
 
@@ -439,8 +563,8 @@ CALISERO_CREDIT_CRITICAL=100   # Emit CreditCritical when remainingBalance <= 10
 ```
 
 Events:
-- `Calisero\\LaravelSms\\Events\\CreditLow` (remainingBalance float)
-- `Calisero\\LaravelSms\\Events\\CreditCritical` (remainingBalance float)
+- `Calisero\LaravelSms\Events\CreditLow` (remainingBalance float)
+- `Calisero\LaravelSms\Events\CreditCritical` (remainingBalance float)
 
 Example listener registration:
 ```php
@@ -455,6 +579,67 @@ Event::listen(CreditCritical::class, fn (CreditCritical $e) => Log::error('Calis
 
 If a critical threshold is met, only `CreditCritical` is fired (not `CreditLow`). Leave variables unset (or null) to disable.
 
+## Daily Sending Limit
+
+Every Calisero account has its own daily sending limit. Each real message counts once, whatever its
+number of parts, verification codes included; test messages (a sandbox account or API key) never
+count. The day ends at midnight, Romania time (`Europe/Bucharest`).
+
+**Where to read it**
+
+```php
+// The account (needs CALISERO_ACCOUNT_ID)
+$account = Calisero::getAccount();
+$account->getDailyLimit();     // ?int, null when no limit applies
+$account->getDailyRemaining(); // ?int
+$account->getSentToday();      // int
+
+// After each message or verification code you create
+$response->getResponseMeta()->getDailyRemaining();
+```
+
+From the command line: `php artisan calisero:account`.
+
+**When it is reached**, the API answers `429` and the SDK throws
+`Calisero\Sms\Exceptions\DailyLimitExceededException`: nothing was sent and nothing billed. It extends
+`RateLimitedException`, so catch it first to tell it from the request rate limit (240 requests a
+minute):
+
+```php
+use Calisero\Sms\Exceptions\DailyLimitExceededException;
+use Calisero\Sms\Exceptions\RateLimitedException;
+
+try {
+    Calisero::sendSms(['to' => '+40712345678', 'text' => 'Hello!']);
+} catch (DailyLimitExceededException $e) {
+    $e->getDailyLimit();  // e.g. 1000
+    $e->getResetsAt();    // e.g. 2026-10-06T00:00:00+03:00
+    $e->getRetryAfter();  // seconds until midnight, Romania time
+    // A queued job: $this->release($e->getRetryAfter() ?? 3600);
+} catch (RateLimitedException $e) {
+    $e->getRetryAfter();  // seconds; the request rate limit frees up quickly
+}
+```
+
+**Before it is reached**, set a threshold and listen for `DailyLimitLow`, dispatched by the delivery
+webhook (which must be enabled) whenever the messages left today are at or below it:
+
+```env
+CALISERO_DAILY_LIMIT_LOW=100   # Emit DailyLimitLow when dailyRemaining <= 100
+```
+
+```php
+use Calisero\LaravelSms\Events\DailyLimitLow;
+
+Event::listen(DailyLimitLow::class, fn (DailyLimitLow $e) => Log::warning('Calisero daily limit almost reached', [
+    'limit' => $e->dailyLimit,
+    'remaining' => $e->dailyRemaining,
+    'sent_today' => $e->sentToday,
+]));
+```
+
+To raise the limit, contact Calisero.
+
 ## Examples
 
 A curated set of runnable usage examples lives in the [`examples/`](examples) directory:
@@ -463,10 +648,12 @@ A curated set of runnable usage examples lives in the [`examples/`](examples) di
 |----------|------|
 | Send an SMS via Facade | `examples/send_sms_facade.php` |
 | Send notification | `examples/notification_example.php` |
+| Send with shortened URLs, read the daily limit left | `examples/send_sms_with_shortened_urls.php` |
 | Register webhook & delivery listeners | `examples/webhook_listeners.php` |
 | Credit monitoring listeners | `examples/credit_monitoring_listeners.php` |
+| Daily sending limit (account, refusal, `DailyLimitLow`) | `examples/daily_limit.php` |
 | Event subscriber pattern | `examples/event_subscriber.php` |
-| Config customization snippet | `examples/custom_config_snippet.php` |
+| A one-off client with a longer timeout | `examples/custom_config_snippet.php` |
 
 Quick peek (webhook event handling):
 ```php
@@ -479,28 +666,49 @@ See the [Examples README](examples/README.md) for setup & detailed walkthroughs.
 
 ## Error Handling
 
-The package provides comprehensive error handling:
+The SDK throws a typed exception for every error status, carrying the API's own message:
 
 ```php
+use Calisero\Sms\Exceptions\ApiException;
+use Calisero\Sms\Exceptions\DailyLimitExceededException;
+use Calisero\Sms\Exceptions\RateLimitedException;
 use Calisero\Sms\Exceptions\UnauthorizedException;
 use Calisero\Sms\Exceptions\ValidationException;
-use Calisero\Sms\Exceptions\RateLimitedException;
 
 try {
     Calisero::sendSms([
-        'to' => '+1234567890',
+        'to' => '+40712345678',
         'text' => 'Hello!',
     ]);
 } catch (UnauthorizedException $e) {
-    // Handle authentication errors
+    // 401: the API key is missing or invalid
 } catch (ValidationException $e) {
-    // Handle validation errors
+    // 422: $e->getValidationErrors() lists the fields at fault
+} catch (DailyLimitExceededException $e) {
+    // 429: the daily sending limit is reached until $e->getResetsAt()
 } catch (RateLimitedException $e) {
-    // Handle rate limiting - respect Retry-After header if provided
-} catch (\Throwable $e) {
-    // Handle other errors
+    // 429: the request rate limit, retry after $e->getRetryAfter() seconds
+} catch (ApiException $e) {
+    // 403, 404, 5xx, no answer...: $e->getStatusCode()
+    logger()->error('Calisero error: ' . $e->getMessage(), ['trace_id' => $e->getTraceId()]);
 }
 ```
+
+| Exception | Status |
+| --- | --- |
+| `UnauthorizedException` | 401 |
+| `ForbiddenException` | 403 |
+| `NotFoundException` | 404 |
+| `ValidationException` | 422 |
+| `DailyLimitExceededException` (extends `RateLimitedException`) | 429, `code: daily_limit_exceeded` |
+| `RateLimitedException` | 429 |
+| `ServerException` | 500, 502, 503, 504 |
+| `ApiException` (the parent of all of the above) | any other error |
+| `TransportException` | no answer (connection failed, timeout) |
+
+Every `ApiException` has `getTraceId()`: quote it to Calisero support, or look the request up in
+the dashboard under Developers → Debug. The package's own `\InvalidArgumentException` and
+`\RuntimeException` report a missing parameter or configuration before any request is made.
 
 ## Testing
 

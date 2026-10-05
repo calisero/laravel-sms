@@ -9,6 +9,7 @@ use Calisero\LaravelSms\Events\MessageDelivered;
 use Calisero\LaravelSms\Events\MessageFailed;
 use Calisero\LaravelSms\Events\CreditLow;
 use Calisero\LaravelSms\Events\CreditCritical;
+use Calisero\LaravelSms\Events\DailyLimitLow;
 use Illuminate\Support\Facades\Log;
 
 class SmsEventSubscriber
@@ -34,7 +35,7 @@ class SmsEventSubscriber
     }
 
     /**
-     * Handle message failed.
+     * Handle message failed (status "undelivered").
      */
     public function handleFailed(MessageFailed $event): void
     {
@@ -58,6 +59,14 @@ class SmsEventSubscriber
         ]);
     }
 
+    public function handleDailyLimitLow(DailyLimitLow $event): void
+    {
+        Log::warning('Subscriber: Daily sending limit almost reached', [
+            'limit' => $event->dailyLimit,
+            'remaining' => $event->dailyRemaining,
+        ]);
+    }
+
     /**
      * Register the listeners for the subscriber.
      *
@@ -71,6 +80,7 @@ class SmsEventSubscriber
             MessageFailed::class => ['handleFailed'],
             CreditLow::class => ['handleCreditLow'],
             CreditCritical::class => ['handleCreditCritical'],
+            DailyLimitLow::class => ['handleDailyLimitLow'],
         ];
     }
 }

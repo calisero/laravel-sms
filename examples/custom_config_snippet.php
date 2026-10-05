@@ -1,27 +1,31 @@
 <?php
 
-// Example: Temporarily overriding Calisero config values at runtime.
-// Useful inside a queued job or a maintenance script to adjust timeouts.
+// Example: A one-off client with a longer timeout.
+// Useful inside a queued job or a maintenance script on a slow network.
+//
+// The client behind the Calisero facade is a singleton, built from config/calisero.php
+// the first time it is used: changing the config afterwards does not affect it. Build
+// a separate client instead.
 
+use Calisero\LaravelSms\ClientFactory;
+use Calisero\LaravelSms\SmsClient;
 use Illuminate\Support\Facades\Config;
-use Calisero\LaravelSms\Facades\Calisero;
 
-// Original timeout
 $originalTimeout = config('calisero.timeout');
 
-// Override for a specific block (e.g., slower network conditions)
-Config::set('calisero.timeout', 20.0);
-Config::set('calisero.retries', 8);
+Config::set('calisero.timeout', 30); // seconds
 
 try {
-    Calisero::sendSms([
-        'to' => '+1234567890',
-        'text' => 'Sending with extended timeout',
-        'from' => 'MyApp',
-        'idempotencyKey' => 'greeting-' . bin2hex(random_bytes(4)),
-    ]);
+    $client = new SmsClient(ClientFactory::make());
 } finally {
     // Always restore to avoid side effects for subsequent operations
     Config::set('calisero.timeout', $originalTimeout);
 }
 
+$response = $client->sendSms([
+    'to' => '+40712345678',
+    'text' => 'Sending with extended timeout',
+    'from' => 'MyApp', // Only if approved by Calisero
+]);
+
+echo "Message ID: {$response->getData()->getId()}\n";

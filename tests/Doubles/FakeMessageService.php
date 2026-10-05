@@ -11,6 +11,8 @@ use Calisero\Sms\Dto\Message;
 use Calisero\Sms\Dto\PaginatedMessages;
 use Calisero\Sms\Dto\PaginationLinks;
 use Calisero\Sms\Dto\PaginationMeta;
+use Calisero\Sms\Dto\ResponseMeta;
+use Calisero\Sms\Dto\ShortenedLink;
 
 /**
  * Stand-in for the SDK's MessageService that records what it was called with.
@@ -29,6 +31,12 @@ class FakeMessageService
     /** Set to throw from create(), to exercise the error path. */
     public ?\Throwable $createException = null;
 
+    /** What the answer to create() reports in its headers. */
+    public ?ResponseMeta $responseMeta = null;
+
+    /** @var ShortenedLink[] The links every returned message reports as shortened. */
+    public array $shortenedUrls = [];
+
     public function create(CreateMessageRequest $request): CreateMessageResponse
     {
         $this->lastPayload = $request->toArray();
@@ -37,7 +45,7 @@ class FakeMessageService
             throw $this->createException;
         }
 
-        return new CreateMessageResponse($this->message('fake-id', $this->lastPayload));
+        return new CreateMessageResponse($this->message('fake-id', $this->lastPayload), $this->responseMeta);
     }
 
     public function get(string $messageId): GetMessageResponse
@@ -83,6 +91,7 @@ class FakeMessageService
             callbackUrl: isset($payload['callback_url']) ? (string) $payload['callback_url'] : null,
             status: 'queued',
             sender: isset($payload['sender']) ? (string) $payload['sender'] : null,
+            shortenedUrls: $this->shortenedUrls,
         );
     }
 }
