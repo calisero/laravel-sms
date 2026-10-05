@@ -37,8 +37,12 @@ class SmsChannelTest extends TestCase
             SmsMessage::create('Hello')
                 ->to(TestPhones::DEFAULT)
                 ->from('CALISERO')
-                ->scheduleAt('2026-01-01T10:00:00Z')
+                ->scheduleAt('2026-01-01 10:00:00')
                 ->idempotencyKey('key-1')
+                ->shortenUrls()
+                ->visibleBody('Hidden')
+                ->validity(48)
+                ->callbackUrl('https://example.test/cb')
         );
 
         $this->channel->send(new NotifiableWithoutPhone(), $notification);
@@ -47,9 +51,38 @@ class SmsChannelTest extends TestCase
             'to' => TestPhones::DEFAULT,
             'text' => 'Hello',
             'from' => 'CALISERO',
-            'schedule_at' => '2026-01-01T10:00:00Z',
+            'schedule_at' => '2026-01-01 10:00:00',
             'idempotency_key' => 'key-1',
+            'shorten_urls' => true,
+            'visible_body' => 'Hidden',
+            'validity' => 48,
+            'callback_url' => 'https://example.test/cb',
         ], $this->client->lastParams);
+    }
+
+    /**
+     * An explicit "do not shorten" is passed on; only an unset one is left out.
+     */
+    public function test_it_passes_on_a_refusal_to_shorten_urls(): void
+    {
+        $notification = $this->notificationReturning(
+            SmsMessage::create('https://example.test')->to(TestPhones::DEFAULT)->shortenUrls(false)
+        );
+
+        $this->channel->send(new NotifiableWithoutPhone(), $notification);
+
+        $this->assertFalse($this->client->lastParams['shorten_urls'] ?? null);
+    }
+
+    /**
+     * Laravel hands the channel's return value to NotificationSent listeners.
+     */
+    public function test_it_returns_the_api_response(): void
+    {
+        $response = $this->channel->send(new NotifiableWithPhone(), new TestSmsNotification());
+
+        $this->assertNotNull($response);
+        $this->assertSame($this->client->lastResponse, $response);
     }
 
     public function test_it_omits_optional_parameters_that_were_not_set(): void
@@ -99,14 +132,14 @@ class SmsChannelTest extends TestCase
 
     public function test_it_does_not_send_when_no_recipient_can_be_resolved(): void
     {
-        $this->channel->send(new NotifiableWithoutPhone(), new TestSmsNotification());
+        $this->assertNull($this->channel->send(new NotifiableWithoutPhone(), new TestSmsNotification()));
 
         $this->assertNull($this->client->lastParams);
     }
 
     public function test_it_does_not_send_when_the_notification_returns_no_message(): void
     {
-        $this->channel->send(new NotifiableWithPhone(), $this->notificationReturning(null));
+        $this->assertNull($this->channel->send(new NotifiableWithPhone(), $this->notificationReturning(null)));
 
         $this->assertNull($this->client->lastParams);
     }

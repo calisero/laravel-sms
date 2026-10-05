@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Calisero transactional SMS API",
-        "version": "1.0.12 - 08.10.2025",
-        "description": "API documentation for sending and managing transactional SMS messages via Calisero [(https://calisero.ro)](https://calisero.ro)."
+        "version": "1.0.14 - 03.10.2026",
+        "description": "API documentation for sending and managing transactional SMS messages via [Calisero](https://calisero.ro)."
     },
     "externalDocs": {
         "description": "Official PHP Library (GitHub)",
@@ -68,6 +68,9 @@
                                         "credit": 100.50,
                                         "status": "active",
                                         "sandbox": false,
+                                        "daily_limit": 1000,
+                                        "daily_remaining": 873,
+                                        "sent_today": 127,
                                         "created_at": "2024-09-20T12:48:55.000000Z"
                                     }
                                 }
@@ -93,6 +96,7 @@
             "post": {
                 "summary": "Create a new message",
                 "operationId": "createMessage",
+                "description": "Sends an SMS now, or at `schedule_at`.\n\n**Daily sending limit.** Every account has its own daily limit; a new account starts with {new_account_daily_limit} and keeps it until we raise it on request. Each real message the account creates counts once, whatever its number of parts: the OTP codes of `POST /verifications` too, and a scheduled message on the day it is created. Test messages (a sandbox account or a sandbox API key) never count and are never refused. The day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created message carries `X-Daily-Limit` and `X-Daily-Remaining` (what is left today, after this message). Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: nothing is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute. Every answer carries `X-RateLimit-Limit` and `X-RateLimit-Remaining`; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.",
                 "tags": [
                     "Messages"
                 ],
@@ -114,7 +118,8 @@
                                 "schedule_at": "2024-11-16 13:21:00",
                                 "callback_url": "https://yoursite.com/your-callback-url",
                                 "sender": "CALISERO",
-                                "validity": 72
+                                "validity": 72,
+                                "shorten_urls": true
                             }
                         }
                     }
@@ -122,6 +127,20 @@
                 "responses": {
                     "201": {
                         "description": "Message created successfully",
+                        "headers": {
+                            "X-Daily-Limit": {
+                                "$ref": "#/components/headers/X-Daily-Limit"
+                            },
+                            "X-Daily-Remaining": {
+                                "$ref": "#/components/headers/X-Daily-Remaining"
+                            },
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/X-RateLimit-Limit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/X-RateLimit-Remaining"
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -139,7 +158,25 @@
                                         "delivered_at": null,
                                         "callback_url": "https://yoursite.com/your-callback-url",
                                         "status": "scheduled",
-                                        "sender": "CALISERO"
+                                        "sender": "CALISERO",
+                                        "shortened_urls": [
+                                            {
+                                                "id": "019adfbb-40a1-71ee-bcb5-8d551b8cfdae",
+                                                "original_link": "https://www.google.com/search?q=calisero&rlz=1C5GCEM_enRO1174RO1174&oq=calisero&gs_lcrp=EgZjaHJvbWUqBggAEEUYOzIGCAAQRRg7MgYIARBFGDwyBggCEEUYPDIGCAMQRRg7MgcIBBAAGO8FMgoIBRAAGIAEGKIEMgoIBhAAGIAEGKIEMgcIBxAAGO8F0gEJMTcxNWowajE1qAIIsAIB&sourceid=chrome&ie=UTF-8",
+                                                "shortened_link": "https://calisero.ro/s/ghJKPV",
+                                                "click_count": 0,
+                                                "last_click": null,
+                                                "created_at": "2025-12-02T15:43:02.000000Z"
+                                            },
+                                            {
+                                                "id": "019adfbb-40a4-70af-ba6c-55b7a07826e6",
+                                                "original_link": "https://calisero.ro/stop/019999b5-5687-71cd-ae81-baf6eea9d86f/+40742***350?reason=Unsubscribe+from+SMS",
+                                                "shortened_link": "https://calisero.ro/s/qpmHfD",
+                                                "click_count": 0,
+                                                "last_click": null,
+                                                "created_at": "2025-12-02T15:43:02.000000Z"
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -153,6 +190,44 @@
                     },
                     "422": {
                         "$ref": "#/components/responses/422ValidationError"
+                    },
+                    "429": {
+                        "description": "Too many requests, for one of two reasons. The account reached its daily sending limit: the body carries the code daily_limit_exceeded, X-Daily-Remaining is 0 and Retry-After counts the seconds until midnight, Romania time. Or the user exceeded the request rate limit of 240 requests a minute: the body is {\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"} without a code, X-RateLimit-Remaining is 0, and Retry-After and X-RateLimit-Reset say when to retry. Nothing is sent and nothing is billed.",
+                        "headers": {
+                            "Retry-After": {
+                                "$ref": "#/components/headers/Retry-After"
+                            },
+                            "X-Daily-Limit": {
+                                "$ref": "#/components/headers/X-Daily-Limit"
+                            },
+                            "X-Daily-Remaining": {
+                                "$ref": "#/components/headers/X-Daily-Remaining-Exceeded"
+                            },
+                            "X-RateLimit-Limit": {
+                                "$ref": "#/components/headers/X-RateLimit-Limit"
+                            },
+                            "X-RateLimit-Remaining": {
+                                "$ref": "#/components/headers/X-RateLimit-Remaining"
+                            },
+                            "X-RateLimit-Reset": {
+                                "$ref": "#/components/headers/X-RateLimit-Reset"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DailyLimitErrorResponse"
+                                },
+                                "example": {
+                                    "message": "This account can send at most 1,000 messages a day. The limit resets at midnight, Romania time (2026-10-01T00:00:00+03:00). Contact us to raise it.",
+                                    "code": "daily_limit_exceeded",
+                                    "daily_limit": 1000,
+                                    "daily_remaining": 0,
+                                    "resets_at": "2026-10-01T00:00:00+03:00",
+                                    "trace_id": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                                }
+                            }
+                        }
                     },
                     "500": {
                         "$ref": "#/components/responses/500InternalServerError"
@@ -204,7 +279,17 @@
                                             "delivered_at": null,
                                             "callback_url": "https://yoursite.com/your-callback-url",
                                             "status": "sent",
-                                            "sender": "CALISERO"
+                                            "sender": "CALISERO",
+                                            "shortened_urls": [
+                                                {
+                                                    "id": "019adfbb-40a1-71ee-bcb5-8d551b8cfdae",
+                                                    "original_link": "https://www.google.com/search?q=calisero&rlz=1C5GCEM_enRO1174RO1174&oq=calisero&gs_lcrp=EgZjaHJvbWUqBggAEEUYOzIGCAAQRRg7MgYIARBFGDwyBggCEEUYPDIGCAMQRRg7MgcIBBAAGO8FMgoIBRAAGIAEGKIEMgoIBhAAGIAEGKIEMgcIBxAAGO8F0gEJMTcxNWowajE1qAIIsAIB&sourceid=chrome&ie=UTF-8",
+                                                    "shortened_link": "https://calisero.ro/s/ghJKPV",
+                                                    "click_count": 0,
+                                                    "last_click": null,
+                                                    "created_at": "2025-12-02T15:43:02.000000Z"
+                                                }
+                                            ]
                                         }
                                     ],
                                     "links": {
@@ -280,7 +365,17 @@
                                         "delivered_at": null,
                                         "callback_url": "https://yoursite.com/your-callback-url",
                                         "status": "sent",
-                                        "sender": "CALISERO"
+                                        "sender": "CALISERO",
+                                        "shortened_urls": [
+                                            {
+                                                "id": "019adfbb-40a1-71ee-bcb5-8d551b8cfdae",
+                                                "original_link": "https://www.google.com/search?q=calisero&rlz=1C5GCEM_enRO1174RO1174&oq=calisero&gs_lcrp=EgZjaHJvbWUqBggAEEUYOzIGCAAQRRg7MgYIARBFGDwyBggCEEUYPDIGCAMQRRg7MgcIBBAAGO8FMgoIBRAAGIAEGKIEMgoIBhAAGIAEGKIEMgcIBxAAGO8F0gEJMTcxNWowajE1qAIIsAIB&sourceid=chrome&ie=UTF-8",
+                                                "shortened_link": "https://calisero.ro/s/ghJKPV",
+                                                "click_count": 0,
+                                                "last_click": null,
+                                                "created_at": "2025-12-02T15:43:02.000000Z"
+                                            }
+                                        ]
                                     }
                                 }
                             }
@@ -664,7 +759,7 @@
                 "summary": "Retrieve a list of verifications",
                 "operationId": "listVerifications",
                 "tags": [
-                    "Verifications"
+                    "Verifications (OTP & 2FA)"
                 ],
                 "security": [
                     { "BearerAuth": [] }
@@ -732,8 +827,9 @@
             "post": {
                 "summary": "Create a new verification request",
                 "operationId": "createVerification",
+                "description": "Generates a code, sends it by SMS to `phone` and keeps it for `PUT /verifications/validate`.\n\n**Daily sending limit.** The code's SMS counts towards the account's daily limit like any message of `POST /messages` (a new account starts with {new_account_daily_limit}); the day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created verification carries `X-Daily-Limit` and `X-Daily-Remaining`. Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: no code is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.",
                 "tags": [
-                    "Verifications"
+                    "Verifications (OTP & 2FA)"
                 ],
                 "security": [
                     { "BearerAuth": [] }
@@ -753,6 +849,12 @@
                 "responses": {
                     "201": {
                         "description": "Verification created successfully",
+                        "headers": {
+                            "X-Daily-Limit": { "$ref": "#/components/headers/X-Daily-Limit" },
+                            "X-Daily-Remaining": { "$ref": "#/components/headers/X-Daily-Remaining" },
+                            "X-RateLimit-Limit": { "$ref": "#/components/headers/X-RateLimit-Limit" },
+                            "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": { "$ref": "#/components/schemas/CreateVerificationResponse" },
@@ -777,6 +879,30 @@
                     "403": { "$ref": "#/components/responses/403Forbidden" },
                     "405": { "$ref": "#/components/responses/405MethodNotAllowed" },
                     "422": { "$ref": "#/components/responses/422ValidationError" },
+                    "429": {
+                        "description": "Too many requests, for one of two reasons. The account reached its daily sending limit: the body carries the code daily_limit_exceeded, X-Daily-Remaining is 0 and Retry-After counts the seconds until midnight, Romania time. Or the user exceeded the request rate limit of 240 requests a minute: the body is {\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"} without a code, X-RateLimit-Remaining is 0, and Retry-After and X-RateLimit-Reset say when to retry. No code is sent and nothing is billed.",
+                        "headers": {
+                            "Retry-After": { "$ref": "#/components/headers/Retry-After" },
+                            "X-Daily-Limit": { "$ref": "#/components/headers/X-Daily-Limit" },
+                            "X-Daily-Remaining": { "$ref": "#/components/headers/X-Daily-Remaining-Exceeded" },
+                            "X-RateLimit-Limit": { "$ref": "#/components/headers/X-RateLimit-Limit" },
+                            "X-RateLimit-Remaining": { "$ref": "#/components/headers/X-RateLimit-Remaining" },
+                            "X-RateLimit-Reset": { "$ref": "#/components/headers/X-RateLimit-Reset" }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": { "$ref": "#/components/schemas/DailyLimitErrorResponse" },
+                                "example": {
+                                    "message": "This account can send at most 1,000 messages a day. The limit resets at midnight, Romania time (2026-10-01T00:00:00+03:00). Contact us to raise it.",
+                                    "code": "daily_limit_exceeded",
+                                    "daily_limit": 1000,
+                                    "daily_remaining": 0,
+                                    "resets_at": "2026-10-01T00:00:00+03:00",
+                                    "trace_id": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                                }
+                            }
+                        }
+                    },
                     "500": { "$ref": "#/components/responses/500InternalServerError" }
                 }
             }
@@ -786,7 +912,7 @@
                 "summary": "Retrieve a single verification",
                 "operationId": "getVerification",
                 "tags": [
-                    "Verifications"
+                    "Verifications (OTP & 2FA)"
                 ],
                 "security": [
                     { "BearerAuth": [] }
@@ -836,7 +962,7 @@
                 "summary": "Verify a code (OTP) for a phone number",
                 "operationId": "validateVerificationPost",
                 "tags": [
-                    "Verifications"
+                    "Verifications (OTP & 2FA)"
                 ],
                 "security": [
                     { "BearerAuth": [] }
@@ -922,7 +1048,7 @@
                 "tags": [
                     "Webhooks (Callbacks)"
                 ],
-                "description": "Calisero sends delivery status updates to the callback URL you provide when creating a message (`callback_url`). This path documents the JSON payload you should expect to receive. Your endpoint must return any 2xx status code to acknowledge receipt. If a non-2xx status is returned, the delivery notification may be retried.",
+                "description": "Calisero sends delivery status updates to the callback URL you provide when creating a message (`callback_url`). This path documents the JSON payload you should expect to receive. Your endpoint must return any 2xx status code to acknowledge receipt. Only a failed connection or no answer within 2 seconds is retried, at most 5 attempts in total (after 1 s, 10 s, 1 min and 6 min); a non-2xx response is not retried.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -939,7 +1065,10 @@
                                 "recipient": "+40742**350",
                                 "scheduleAt": "2025-09-19T12:02:51.000000Z",
                                 "deliveredAt": "2025-09-19T12:02:53.000000Z",
-                                "remainingBalance": 999.392
+                                "remainingBalance": 999.392,
+                                "dailyLimit": 1000,
+                                "dailyRemaining": 588,
+                                "sentToday": 412
                             }
                         }
                     }
@@ -1022,7 +1151,7 @@
                 }
             },
             "422ValidationError": {
-                "description": "Validation error (e.g., missing required fields)",
+                "description": "Validation error (e.g., missing required fields, duplicate SMS request detected)",
                 "content": {
                     "application/json": {
                         "schema": {
@@ -1050,6 +1179,57 @@
                             "message": "Internal server error!"
                         }
                     }
+                }
+            }
+        },
+        "headers": {
+            "X-Daily-Limit": {
+                "description": "The account's daily sending limit: how many messages it can send in a day, midnight to midnight, Romania time. Sent only while the account has a limit.",
+                "schema": {
+                    "type": "integer",
+                    "example": 1000
+                }
+            },
+            "X-Daily-Remaining": {
+                "description": "How many messages the account can still send today, after this one. Sent only while the account has a limit.",
+                "schema": {
+                    "type": "integer",
+                    "example": 873
+                }
+            },
+            "X-Daily-Remaining-Exceeded": {
+                "description": "0 when the daily sending limit refused the message; absent on a refusal of the request rate limit.",
+                "schema": {
+                    "type": "integer",
+                    "example": 0
+                }
+            },
+            "Retry-After": {
+                "description": "Seconds to wait before sending again: until midnight, Romania time, for the daily sending limit; until the request rate limit frees up for that one.",
+                "schema": {
+                    "type": "integer",
+                    "example": 21600
+                }
+            },
+            "X-RateLimit-Limit": {
+                "description": "The request rate limit: how many requests the API user may make a minute. Sent with every answer.",
+                "schema": {
+                    "type": "integer",
+                    "example": 240
+                }
+            },
+            "X-RateLimit-Remaining": {
+                "description": "How many requests the API user may still make this minute. Sent with every answer; 0 on a refusal of the request rate limit.",
+                "schema": {
+                    "type": "integer",
+                    "example": 239
+                }
+            },
+            "X-RateLimit-Reset": {
+                "description": "Only on a refusal of the request rate limit: when requests are accepted again, as a Unix timestamp.",
+                "schema": {
+                    "type": "integer",
+                    "example": 1790000000
                 }
             }
         },
@@ -1093,6 +1273,11 @@
                     "sender": {
                         "type": "string",
                         "description": "Sender name or phone number",
+                        "nullable": true
+                    },
+                    "shorten_urls": {
+                        "type": "boolean",
+                        "description": "If true, URLs inside the body are shortened and returned in the response",
                         "nullable": true
                     }
                 },
@@ -1186,6 +1371,45 @@
                         "type": "string",
                         "description": "Sender name or phone number",
                         "nullable": true
+                    },
+                    "shortened_urls": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ShortenedLink"
+                        },
+                        "description": "List of shortened links generated from the message body"
+                    }
+                }
+            },
+            "ShortenedLink": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "original_link": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "shortened_link": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "click_count": {
+                        "type": "integer",
+                        "description": "Number of recorded clicks",
+                        "minimum": 0
+                    },
+                    "last_click": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true,
+                        "description": "Most recent click timestamp, null if never clicked"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
                     }
                 }
             },
@@ -1299,6 +1523,20 @@
                     "sandbox": {
                         "type": "boolean",
                         "description": "Whether this is a sandbox account"
+                    },
+                    "daily_limit": {
+                        "type": "integer",
+                        "description": "How many messages the account can send in a day, midnight to midnight, Romania time; null when no daily limit applies",
+                        "nullable": true
+                    },
+                    "daily_remaining": {
+                        "type": "integer",
+                        "description": "How many messages the account can still send today, as the X-Daily-Remaining header says; null when no daily limit applies",
+                        "nullable": true
+                    },
+                    "sent_today": {
+                        "type": "integer",
+                        "description": "The real messages the account created today, Romania time, OTP codes included and test messages left out, one per message whatever its parts"
                     },
                     "created_at": {
                         "type": "string",
@@ -1468,6 +1706,52 @@
                     "message": {
                         "type": "string",
                         "description": "Error or status message"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "The request's trace id, the same as the X-Trace-Id header: quote it to support or follow it in the dashboard (Developers, Debug)",
+                        "example": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                    }
+                }
+            },
+            "DailyLimitErrorResponse": {
+                "type": "object",
+                "description": "A message refused because the account reached its daily sending limit. The request rate limit's 429 has no code: {\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}.",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "What happened, when the limit resets and that it can be raised",
+                        "example": "This account can send at most 1,000 messages a day. The limit resets at midnight, Romania time (2026-10-01T00:00:00+03:00). Contact us to raise it."
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Always daily_limit_exceeded: tells this refusal from the request rate limit's",
+                        "enum": [
+                            "daily_limit_exceeded"
+                        ]
+                    },
+                    "daily_limit": {
+                        "type": "integer",
+                        "description": "The account's daily limit, as in the X-Daily-Limit header",
+                        "example": 1000
+                    },
+                    "daily_remaining": {
+                        "type": "integer",
+                        "description": "How many messages the account can still send today, as in the X-Daily-Remaining header: 0 once the limit is reached",
+                        "example": 0
+                    },
+                    "resets_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "The next midnight, Romania time, when the account can send again",
+                        "example": "2026-10-01T00:00:00+03:00"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "The request's trace id, the same as the X-Trace-Id header: quote it to support or follow it in the dashboard (Developers, Debug)",
+                        "example": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
                     }
                 }
             },
@@ -1487,6 +1771,12 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "The request's trace id, the same as the X-Trace-Id header: quote it to support or follow it in the dashboard (Developers, Debug)",
+                        "example": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
                     }
                 }
             },
@@ -1575,7 +1865,10 @@
                     "sentAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Timestamp when the message was sent to the network (present for statuses sent or delivered)."},
                     "deliveredAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Timestamp when the handset confirmed delivery (present only for delivered)."},
                     "scheduleAt": {"type": "string", "format": "date-time", "nullable": true, "description": "Original scheduled sending time if the message was scheduled."},
-                    "remainingBalance": {"type": "number", "format": "float", "nullable": true, "description": "Remaining account balance after billing (if available)."}
+                    "remainingBalance": {"type": "number", "format": "float", "nullable": true, "description": "Remaining account balance after billing (if available)."},
+                    "dailyLimit": {"type": "integer", "nullable": true, "description": "The account's daily sending limit when the callback was sent; null when no daily limit applies. The same as daily_limit in GET /accounts/{accountId}."},
+                    "dailyRemaining": {"type": "integer", "nullable": true, "description": "How many messages the account could still send today when the callback was sent; null when no daily limit applies. The same as daily_remaining in GET /accounts/{accountId}."},
+                    "sentToday": {"type": "integer", "description": "The real messages the account created today, Romania time, when the callback was sent: OTP codes included, test messages left out, one per message whatever its parts. The same as sent_today in GET /accounts/{accountId}."}
                 },
                 "required": ["price", "sender", "status", "messageId", "recipient"]
             }

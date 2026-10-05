@@ -2,12 +2,14 @@
 
 namespace Calisero\LaravelSms;
 
+use Calisero\LaravelSms\Console\Commands\AccountCommand;
 use Calisero\LaravelSms\Console\Commands\CheckVerificationCommand;
 use Calisero\LaravelSms\Console\Commands\SendTestSmsCommand;
 use Calisero\LaravelSms\Console\Commands\SendVerificationCommand;
 use Calisero\LaravelSms\Console\Commands\StatusSmsCommand;
 use Calisero\LaravelSms\Contracts\SmsClient as SmsClientContract;
 use Calisero\LaravelSms\Notification\SmsChannel;
+use Calisero\LaravelSms\Support\WebhookConfig;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
@@ -24,7 +26,7 @@ class ServiceProvider extends BaseServiceProvider
         );
 
         $this->app->singleton(SmsClientContract::class, function ($app) {
-            return new SmsClient(ClientFactory::create());
+            return new SmsClient(ClientFactory::make());
         });
 
         $this->app->alias(SmsClientContract::class, 'calisero');
@@ -63,6 +65,7 @@ class ServiceProvider extends BaseServiceProvider
                 SendVerificationCommand::class,
                 CheckVerificationCommand::class,
                 StatusSmsCommand::class,
+                AccountCommand::class,
             ]);
         }
     }
@@ -82,7 +85,7 @@ class ServiceProvider extends BaseServiceProvider
      */
     private function registerWebhookRoutes(): void
     {
-        if (true === config('calisero.webhook.enabled')) {
+        if (WebhookConfig::enabled()) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/webhooks.php');
         }
     }

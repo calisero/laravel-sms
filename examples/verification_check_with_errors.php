@@ -24,17 +24,19 @@ try {
         'code' => '123456',
     ]);
 
-    if ('verified' === $result->status) {
+    $verification = $result->getData();
+
+    if ('verified' === $verification->getStatus()) {
         echo "✓ Verification successful!\n";
-        echo "Phone number verified: {$result->phone}\n";
-        echo "Status: {$result->status}\n";
-        echo "Verified at: {$result->verified_at}\n";
+        echo "Phone number verified: {$verification->getPhone()}\n";
+        echo "Status: {$verification->getStatus()}\n";
+        echo "Verified at: {$verification->getVerifiedAt()}\n";
 
         // Proceed with authentication/registration
         // Auth::login($user);
     } else {
         echo "✗ Verification failed\n";
-        echo "Status: {$result->status}\n";
+        echo "Status: {$verification->getStatus()}\n";
         echo "Reason: Invalid or expired code\n";
     }
 } catch (ValidationException $e) {

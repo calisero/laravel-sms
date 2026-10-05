@@ -44,13 +44,22 @@ function sendVerificationCode(Request $request): JsonResponse
         return response()->json([
             'success' => true,
             'message' => 'Verification code sent',
-            'expires_at' => $response->expires_at,
+            'expires_at' => $response->getData()->getExpiresAt(),
         ]);
     } catch (\Calisero\Sms\Exceptions\ValidationException $e) {
         return response()->json([
             'success' => false,
             'error' => 'Invalid phone number format',
         ], 422);
+    } catch (\Calisero\Sms\Exceptions\DailyLimitExceededException $e) {
+        // The account's daily sending limit is reached until midnight, Romania time.
+        // Catch it before RateLimitedException, which it extends.
+        report($e);
+
+        return response()->json([
+            'success' => false,
+            'error' => 'We cannot send codes right now. Please try again later.',
+        ], 503);
     } catch (\Calisero\Sms\Exceptions\RateLimitedException $e) {
         return response()->json([
             'success' => false,
@@ -81,7 +90,7 @@ function verifyCode(Request $request): JsonResponse
             'code' => $request->code,
         ]);
 
-        if ('verified' === $result->status) {
+        if ('verified' === $result->getData()->getStatus()) {
             // Verification successful - authenticate user
             $user = User::where('phone', $request->phone)->first();
 

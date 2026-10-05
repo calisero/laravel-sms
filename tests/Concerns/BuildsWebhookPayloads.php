@@ -31,6 +31,9 @@ trait BuildsWebhookPayloads
             'scheduleAt' => '2026-01-01T11:59:42.000000Z',
             'deliveredAt' => null,
             'remainingBalance' => 1000.00,
+            'dailyLimit' => null,
+            'dailyRemaining' => null,
+            'sentToday' => 12,
         ], $overrides);
     }
 

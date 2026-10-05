@@ -17,10 +17,14 @@ class FakeSdkClient
 
     public FakeAccountService $accountService;
 
-    public function __construct(float $credit = 0.0)
-    {
+    public function __construct(
+        float $credit = 0.0,
+        ?int $dailyLimit = null,
+        ?int $dailyRemaining = null,
+        int $sentToday = 0
+    ) {
         $this->messageService = new FakeMessageService();
-        $this->accountService = new FakeAccountService($credit);
+        $this->accountService = new FakeAccountService($credit, $dailyLimit, $dailyRemaining, $sentToday);
     }
 
     public function messages(): FakeMessageService

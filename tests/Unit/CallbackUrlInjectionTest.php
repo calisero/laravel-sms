@@ -9,6 +9,7 @@ use Calisero\LaravelSms\Tests\Doubles\FakeSdkClient;
 use Calisero\LaravelSms\Tests\Support\TestPhones;
 use Calisero\LaravelSms\Tests\TestCase;
 use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Tests automatic callback_url injection logic.
@@ -46,6 +47,49 @@ class CallbackUrlInjectionTest extends TestCase
         $this->send();
 
         $this->assertArrayNotHasKey('callback_url', $this->payload());
+    }
+
+    #[DataProvider('spellingsOfTrue')]
+    public function test_callback_url_is_injected_for_any_spelling_of_true(mixed $enabled): void
+    {
+        config()->set('calisero.webhook.enabled', $enabled);
+
+        $this->send();
+
+        $this->assertArrayHasKey('callback_url', $this->payload());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function spellingsOfTrue(): iterable
+    {
+        yield 'true' => [true];
+        yield 'the string "1"' => ['1'];
+        yield 'the string "true"' => ['true'];
+    }
+
+    /**
+     * Regression test: a (bool) cast read the string "false" as enabled.
+     */
+    #[DataProvider('spellingsOfFalse')]
+    public function test_no_injection_for_any_spelling_of_false(mixed $enabled): void
+    {
+        config()->set('calisero.webhook.enabled', $enabled);
+
+        $this->send();
+
+        $this->assertArrayNotHasKey('callback_url', $this->payload());
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function spellingsOfFalse(): iterable
+    {
+        yield 'the string "false"' => ['false'];
+        yield 'the string "0"' => ['0'];
+        yield 'null' => [null];
     }
 
     public function test_no_injection_when_the_path_is_empty(): void

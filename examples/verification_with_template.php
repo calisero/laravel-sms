@@ -21,9 +21,13 @@ try {
     ]);
 
     echo "✓ Verification code sent with custom template!\n";
-    echo "Recipient: {$response->phone}\n";
-    echo "Status: {$response->status}\n";
-    echo "Expires at: {$response->expires_at}\n";
+    $verification = $response->getData();
+    echo "Recipient: {$verification->getPhone()}\n";
+    echo "Status: {$verification->getStatus()}\n";
+    echo "Expires at: {$verification->getExpiresAt()}\n";
+
+    // The code's SMS counts towards the daily sending limit (null when the account has none)
+    echo "Messages left today: " . ($response->getResponseMeta()->getDailyRemaining() ?? 'no limit') . "\n";
 } catch (ValidationException $e) {
     echo "✗ Validation error: {$e->getMessage()}\n";
     // Common validation errors:

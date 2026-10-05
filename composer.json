@@ -17,7 +17,7 @@
     "illuminate/validation": "^12.0 || ^13.0",
     "illuminate/routing": "^12.0 || ^13.0",
     "illuminate/console": "^12.0 || ^13.0",
-    "calisero/calisero-php": "^2.0"
+    "calisero/calisero-php": "^2.3"
   },
   "require-dev": {
     "orchestra/testbench": "^10.0 || ^11.0",

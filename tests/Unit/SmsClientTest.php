@@ -98,10 +98,66 @@ class SmsClientTest extends TestCase
     {
         yield 'visible_body' => [['visible_body' => 'Shown'], 'visible_body', 'Shown'];
         yield 'visibleBody' => [['visibleBody' => 'Shown'], 'visible_body', 'Shown'];
-        yield 'schedule_at' => [['schedule_at' => '2026-01-01T10:00:00Z'], 'schedule_at', '2026-01-01T10:00:00Z'];
-        yield 'scheduleAt' => [['scheduleAt' => '2026-01-01T10:00:00Z'], 'schedule_at', '2026-01-01T10:00:00Z'];
+        yield 'schedule_at' => [['schedule_at' => '2026-01-01 10:00:00'], 'schedule_at', '2026-01-01 10:00:00'];
+        yield 'scheduleAt' => [['scheduleAt' => '2026-01-01 10:00:00'], 'schedule_at', '2026-01-01 10:00:00'];
         yield 'callback_url' => [['callback_url' => 'https://example.test/cb'], 'callback_url', 'https://example.test/cb'];
         yield 'callbackUrl' => [['callbackUrl' => 'https://example.test/cb'], 'callback_url', 'https://example.test/cb'];
+        yield 'shorten_urls' => [['shorten_urls' => true], 'shorten_urls', true];
+        yield 'shortenUrls' => [['shortenUrls' => true], 'shorten_urls', true];
+    }
+
+    /**
+     * Values from a form or the environment arrive as strings: "false" must not
+     * turn into true, as a (bool) cast would make it.
+     */
+    #[DataProvider('shortenUrlsValues')]
+    public function test_it_reads_shorten_urls_as_a_boolean(mixed $value, bool $expected): void
+    {
+        $this->client->sendSms(['to' => TestPhones::DEFAULT, 'text' => 'https://example.test', 'shorten_urls' => $value]);
+
+        $this->assertSame($expected, $this->sdk->messageService->lastPayload['shorten_urls'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{mixed, bool}>
+     */
+    public static function shortenUrlsValues(): iterable
+    {
+        yield 'true' => [true, true];
+        yield 'false' => [false, false];
+        yield 'the string "1"' => ['1', true];
+        yield 'the string "false"' => ['false', false];
+        yield 'the string "0"' => ['0', false];
+    }
+
+    public function test_it_leaves_url_shortening_to_the_api_by_default(): void
+    {
+        $this->client->sendSms(['to' => TestPhones::DEFAULT, 'text' => 'Hello']);
+
+        $this->assertArrayNotHasKey('shorten_urls', $this->sdk->messageService->lastPayload ?? []);
+    }
+
+    /**
+     * The API reads schedule_at as a 'Y-m-d H:i:s' in Romania time and refuses ISO
+     * 8601; a date-time object is converted, daylight saving time included.
+     */
+    #[DataProvider('scheduleDates')]
+    public function test_it_converts_a_schedule_date_time_to_romania_time(\DateTimeInterface $scheduleAt, string $expected): void
+    {
+        $this->client->sendSms(['to' => TestPhones::DEFAULT, 'text' => 'Later', 'schedule_at' => $scheduleAt]);
+
+        $this->assertSame($expected, $this->sdk->messageService->lastPayload['schedule_at'] ?? null);
+    }
+
+    /**
+     * @return iterable<string, array{\DateTimeInterface, string}>
+     */
+    public static function scheduleDates(): iterable
+    {
+        yield 'UTC in winter (UTC+2)' => [new \DateTimeImmutable('2026-01-15 08:00:00', new \DateTimeZone('UTC')), '2026-01-15 10:00:00'];
+        yield 'UTC in summer (UTC+3)' => [new \DateTimeImmutable('2026-07-15 08:00:00', new \DateTimeZone('UTC')), '2026-07-15 11:00:00'];
+        yield 'already Romania time' => [new \DateTime('2026-03-01 09:30:00', new \DateTimeZone('Europe/Bucharest')), '2026-03-01 09:30:00'];
+        yield 'a Carbon instance' => [\Illuminate\Support\Carbon::parse('2026-12-24 22:00:00', 'UTC'), '2026-12-25 00:00:00'];
     }
 
     public function test_it_maps_the_sender_and_casts_the_validity(): void
@@ -137,6 +193,30 @@ class SmsClientTest extends TestCase
         $this->assertSame('acc-123', $this->sdk->accountService->lastRetrievedId);
     }
 
+    public function test_it_returns_the_account_with_its_daily_limit(): void
+    {
+        config()->set('calisero.account_id', 'acc-123');
+        $this->sdk = new FakeSdkClient(credit: 10.0, dailyLimit: 1000, dailyRemaining: 873, sentToday: 127);
+        $this->client = new SmsClient($this->sdk);
+
+        $account = $this->client->getAccount();
+
+        $this->assertSame('acc-123', $this->sdk->accountService->lastRetrievedId);
+        $this->assertSame(1000, $account->getDailyLimit());
+        $this->assertSame(873, $account->getDailyRemaining());
+        $this->assertSame(127, $account->getSentToday());
+    }
+
+    public function test_it_refuses_to_read_the_account_without_an_account_id(): void
+    {
+        config()->set('calisero.account_id', null);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Account ID not configured (calisero.account_id)');
+
+        $this->client->getAccount();
+    }
+
     public function test_it_refuses_to_read_the_balance_without_an_account_id(): void
     {
         config()->set('calisero.account_id', null);
@@ -167,6 +247,39 @@ class SmsClientTest extends TestCase
         $this->client->listMessages();
 
         $this->assertSame(1, $this->sdk->messageService->lastListedPage);
+    }
+
+    /**
+     * Regression test: a missing phone used to raise an "Undefined array key"
+     * warning, then a TypeError from the SDK request.
+     *
+     * @param array<string, mixed> $params
+     */
+    #[DataProvider('verificationsWithoutAPhone')]
+    public function test_it_rejects_a_verification_without_a_phone(string $method, array $params): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The "to" (or "phone") parameter is required');
+
+        $this->client->{$method}($params);
+    }
+
+    /**
+     * @return iterable<string, array{string, array<string, mixed>}>
+     */
+    public static function verificationsWithoutAPhone(): iterable
+    {
+        yield 'send, no phone' => ['sendVerification', ['brand' => 'MyApp']];
+        yield 'send, empty phone' => ['sendVerification', ['to' => '', 'brand' => 'MyApp']];
+        yield 'check, no phone' => ['checkVerification', ['code' => '123456']];
+    }
+
+    public function test_it_rejects_a_verification_check_without_a_code(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The "code" parameter is required');
+
+        $this->client->checkVerification(['to' => TestPhones::DEFAULT]);
     }
 
     /**

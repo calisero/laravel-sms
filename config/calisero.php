@@ -15,15 +15,12 @@ return [
 
     'api_key' => env('CALISERO_API_KEY'),
 
-    'account_id' => env('CALISERO_ACCOUNT_ID'), // added for balance queries
+    'account_id' => env('CALISERO_ACCOUNT_ID'), // needed by getAccount(), getBalance() and calisero:account
 
+    // Seconds; cURL takes whole seconds, so a fraction is rounded up.
     'timeout' => env('CALISERO_TIMEOUT', 10.0),
 
     'connect_timeout' => env('CALISERO_CONNECT_TIMEOUT', 3.0),
-
-    'retries' => env('CALISERO_RETRIES', 5),
-
-    'retry_backoff_ms' => env('CALISERO_RETRY_BACKOFF_MS', 200),
 
     /*
     |--------------------------------------------------------------------------
@@ -31,7 +28,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Enable webhooks for delivery status & balance events. If enabled, the
-    | route at the configured path will be registered without authentication.
+    | route at the configured path is registered and its URL is sent as the
+    | callback_url of every message that does not set its own. Set a token
+    | to require it as the ?token= query parameter of every callback.
     |
     */
 
@@ -58,5 +57,22 @@ return [
     'credit' => [
         'low_threshold' => env('CALISERO_CREDIT_LOW'), // float|string|null
         'critical_threshold' => env('CALISERO_CREDIT_CRITICAL'), // float|string|null
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Daily Sending Limit Monitoring (Optional)
+    |--------------------------------------------------------------------------
+    |
+    | Emit DailyLimitLow when a delivery webhook reports that the account can
+    | send this many messages or fewer before its daily limit, which resets at
+    | midnight, Romania time. Leave null (default) to disable.
+    |
+    | CALISERO_DAILY_LIMIT_LOW=100   (example)
+    |
+    */
+
+    'daily_limit' => [
+        'low_threshold' => env('CALISERO_DAILY_LIMIT_LOW'), // int|string|null
     ],
 ];

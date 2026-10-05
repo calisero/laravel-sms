@@ -4,6 +4,56 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-05
+
+Support for version 1.0.14 of the Calisero API, through `calisero/calisero-php` 2.3. Upgrading needs no code change; the behavior changes are listed under Changed and Fixed.
+
+### Added
+- **URL shortening.** `sendSms()` takes a `shorten_urls` (or `shortenUrls`) parameter and `SmsMessage` a `shortenUrls()` method: Calisero replaces the `http://` and `https://` links of the text with short ones. The message's `getShortenedUrls()` lists them, with their click counts once read again. `calisero:sms:test` gained a `--shorten-urls` flag, and `calisero:sms:test` and `calisero:sms:status` print the shortened links.
+- **Daily sending limit.**
+  - `getAccount()` on the client and the facade returns the SDK's `Account`, with `getDailyLimit()`, `getDailyRemaining()` and `getSentToday()`. It is declared on the `SmsClient` contract with `@method` rather than as a method, so implementations written for 1.2 keep loading; it becomes a method of the contract in 2.0.
+  - New `calisero:account` command: credit, status, sandbox and the daily limit with what is left of it.
+  - New `DailyLimitLow` event (`dailyLimit`, `dailyRemaining`, `sentToday`), dispatched by a delivery webhook that reports `dailyRemaining` at or below the new `calisero.daily_limit.low_threshold` (`CALISERO_DAILY_LIMIT_LOW`). Disabled by default.
+  - The SDK throws `DailyLimitExceededException` when the limit is reached. The commands report it apart from the request rate limit, with the time the limit resets.
+  - `calisero:sms:test` and `calisero:verification:send` print what is left of the daily limit after the message, from the SDK's new `getResponseMeta()`.
+- **Typed webhook payloads.** `MessageSent`, `MessageDelivered` and `MessageFailed` gained a `message()` method returning the SDK's `DeliveryWebhookMessage` (typed getters, the daily limit fields included), or `null` when the payload lacks a required field. `$messageData` is unchanged.
+- **More sending options on `SmsMessage`:** `visibleBody()`, `validity()` (hours) and `callbackUrl()`, which the notification channel had no way to set.
+- **Date-times for `schedule_at`.** `sendSms()` and `SmsMessage::scheduleAt()` accept a `DateTimeInterface` (Carbon included) and convert it to the `Y-m-d H:i:s`, Romania time, the API expects. Strings are sent as before.
+- `SmsChannel::send()` returns the `CreateMessageResponse`, which Laravel hands to `NotificationSent` listeners as `$event->response` (it returned nothing). It returns `null` when nothing was sent.
+- `ClientFactory::make()` and the new `SdkClient` class: the SDK's services built on the package configuration (see Fixed).
+- The commands print the trace ID of every failed request (`getTraceId()`), to quote to Calisero support.
+- `resources/openApi/api-v1.json` updated to the API's 1.0.14 specification.
+- Examples: `send_sms_with_shortened_urls.php` and `daily_limit.php`; the daily limit in `complete_2fa_flow.php`, the verification examples and `event_subscriber.php`.
+- Tests for all of the above, plus the first tests of the artisan commands: 177 tests, up from 110.
+
+### Changed
+- **`calisero/calisero-php` raised to `^2.3`** (was `^2.0`), for the API 1.0.14 features. SDK 2.3 also fixes its exception messages, which used to read `HTTP error 404` and the like instead of the API's message.
+- **Requests now time out after `calisero.timeout`** (10 s by default) and `calisero.connect_timeout` (3 s) instead of the SDK's own 30 s and 10 s; see Fixed. Raise `CALISERO_TIMEOUT` if you relied on the longer wait. cURL takes whole seconds, so a fraction is rounded up.
+- `sendVerification()` and `checkVerification()` on the package's client declare their real return types, `CreateVerificationResponse` and `GetVerificationResponse` (the contract keeps `mixed`, so custom implementations are unaffected), and so does the facade's docblock.
+- `calisero:verification:send` and `calisero:verification:check` take the client by injection, like the other commands, instead of through the facade.
+- The four commands share their error output (the new `RendersApiOutput` trait) instead of repeating the same eight `catch` blocks; the output is unchanged apart from the daily limit and the trace ID.
+- `calisero:sms:test --validity` is described as hours, the API's unit (it said minutes).
+
+### Deprecated
+- `ClientFactory::create()`: it builds the SDK's `SmsClient`, whose `create()` fixes the base URI and the timeouts. Use `make()`.
+- `SmsMessage::idempotencyKey()` and the `idempotency_key` parameter: the Calisero API takes no idempotency key, and the package's client never sent it. The API refuses (422) the same message to the same recipient sent again within a few seconds.
+
+### Removed
+- The `retries` and `retry_backoff_ms` configuration keys (`CALISERO_RETRIES`, `CALISERO_RETRY_BACKOFF_MS`): nothing ever read them. The package does not retry: the API takes no idempotency key, so retrying a send that timed out could deliver the message twice.
+
+### Fixed
+- **`MessageFailed` was never dispatched.** The webhook controller listened for the status `failed`, but the API reports a failed delivery as `undelivered`, which dispatched nothing. `undelivered` now dispatches `MessageFailed`; `failed` still does.
+- **`calisero.base_uri`, `calisero.timeout` and `calisero.connect_timeout` did nothing.** The client came from the SDK's `SmsClient::create()`, which fixes its own base URI and timeouts. It is now built by `ClientFactory::make()` from the configuration.
+- **`CALISERO_WEBHOOK_ENABLED=1` sent Calisero a callback URL nothing answered.** The route was registered only for the boolean `true`, while the `callback_url` injection took any truthy value, `"1"` and `"false"` included (`env()` turns `"true"` into `true` but leaves `"1"` a string). Both now read the flag the same way: `true`, `1`, `on` and `yes` enable it, anything else disables it.
+- **A verification without a phone raised a PHP warning, then a `TypeError`.** `sendVerification()` and `checkVerification()` read `$params['phone']` without a default and passed `null` on. They now throw an `\InvalidArgumentException` naming the missing `to` (or `phone`), or `code`.
+- **`schedule_at` was documented as ISO 8601**, which the API refuses with a 422; it expects `Y-m-d H:i:s` in Romania time. The docs, the command help and the tests now use that format.
+
+### Documentation
+- `README.md`: new "Sending Options" (URL shortening, scheduling, the answer's daily limit and trace ID) and "Daily Sending Limit" sections; the notification section shows every `SmsMessage` option and the `NotificationSent` response; the webhook section documents `undelivered`, the daily limit fields of the payload and `message()`; the Error Handling section covers `DailyLimitExceededException` and the trace ID and lists every exception with its status; the requirements table names the SDK and API versions.
+- `README.md` corrections: the verification snippet read `$response->expires_at` and `$result->status`, properties the SDK's responses do not have (`getData()->getExpiresAt()`, `getData()->getStatus()`); the `calisero:webhook:verify` command and `CALISERO_LOG_CHANNEL`, both removed in 1.0.1 and 1.1.2, were still documented, along with the unused retry settings and a "comprehensive logging" feature.
+- The examples read the same missing properties (`$response->phone`, `$response->expires_at`, `$response['message_id']`…); they now use the SDK's getters. `custom_config_snippet.php` changed the configuration of a client already built, which had no effect; it now builds a separate client.
+- `examples/README.md` held two concatenated copies of itself; merged into one.
+
 ## [1.2.0] - 2026-09-12
 
 ### Added
