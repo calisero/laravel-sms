@@ -513,6 +513,18 @@ The configuration file (`config/calisero.php`) allows you to customize:
 Requests are not retried automatically: the API takes no idempotency key, so retrying a send that
 timed out could deliver the message twice. Retry from your own job when it is safe to.
 
+### User-Agent
+
+Every request names the package and its version, PHP, Laravel and the platform, so Calisero can
+tell the package's requests apart and see which versions sent them:
+
+```
+User-Agent: Calisero-SMS-Laravel/1.3.1 (PHP 8.5.3; Laravel 13.4.0; linux x86_64)
+```
+
+The header cannot be configured: a request whose `User-Agent` starts with `Calisero-SMS-Laravel/`
+always comes from this package.
+
 ## Sender ID (Alphanumeric) Requirements
 
 Custom alphanumeric sender IDs (the `from` field) must be **pre‑approved by Calisero** before they can be used in production traffic. If you send a message with an unapproved sender:

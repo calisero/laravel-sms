@@ -4,6 +4,21 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-06
+
+Upgrading needs no code change.
+
+### Added
+- `SmsClient::VERSION`, the package's version, kept in step with this changelog by a test.
+- Tests for the User-Agent, on the wire included: 182 tests, up from 177.
+
+### Changed
+- **User-Agent.** Every request names the package and its version, PHP, Laravel and the platform, e.g. `Calisero-SMS-Laravel/1.3.1 (PHP 8.5.3; Laravel 13.4.0; linux x86_64)`, in place of the SDK's `Calisero-SMS-PHP/2.3.0`, so Calisero can tell the package's requests apart and see which versions sent them. Like the SDK's, the header cannot be configured. The deprecated `ClientFactory::create()` still sends the SDK's own.
+
+### Documentation
+- `README.md`: new "User-Agent" section.
+- `CONTRIBUTING.md`: the release steps include setting `SmsClient::VERSION`.
+
 ## [1.3.0] - 2026-10-05
 
 Support for version 1.0.14 of the Calisero API, through `calisero/calisero-php` 2.3. Upgrading needs no code change; the behavior changes are listed under Changed and Fixed.

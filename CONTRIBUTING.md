@@ -213,6 +213,7 @@ Please **do not** open public issues for security vulnerabilities. Follow the Se
 ## 13. Release / Versioning Notes
 - Semantic Versioning: MAJOR.MINOR.PATCH
 - Changelog maintained in `CHANGELOG.md`.
+- Set the new version in `SmsClient::VERSION` too (it is sent in the `User-Agent` header): a test checks that it matches the latest version of `CHANGELOG.md`.
 - Keep unreleased changes grouped under a "[Unreleased]" heading until tagged.
 - Git tags should match Packagist releases (e.g., `v1.2.0`).
 - Avoid bundling unrelated features in a single release PR.
