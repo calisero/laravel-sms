@@ -19,6 +19,11 @@ use Illuminate\Support\Facades\Route;
 class SmsClient implements SmsClientContract
 {
     /**
+     * The package's version, sent in the User-Agent header; keep it in step with CHANGELOG.md.
+     */
+    public const VERSION = '1.3.1';
+
+    /**
      * @param object $client Exposes messages(), accounts() and verifications() like the
      *                       Calisero SDK: SdkClient, or \Calisero\Sms\SmsClient.
      */

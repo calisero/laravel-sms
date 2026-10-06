@@ -2,6 +2,8 @@
 
 namespace Calisero\LaravelSms;
 
+use Calisero\LaravelSms\Http\UserAgentHttpClient;
+use Calisero\LaravelSms\Support\UserAgent;
 use Calisero\Sms\Auth\BearerTokenAuthProvider;
 use Calisero\Sms\Http\BaseHttpClient;
 use Calisero\Sms\Http\Factory\HttpFactory;
@@ -14,16 +16,20 @@ class ClientFactory
     public const DEFAULT_BASE_URI = 'https://rest.calisero.ro/api/v1';
 
     /**
-     * Create an SDK client on the configured API key, base URI and timeouts.
+     * Create an SDK client on the configured API key, base URI and timeouts, sending
+     * the package's User-Agent.
      */
     public static function make(): SdkClient
     {
         $baseUri = (string) Config::get('calisero.base_uri');
 
         return new SdkClient(new HttpClient(
-            new BaseHttpClient(
-                self::seconds(Config::get('calisero.timeout'), 10),
-                self::seconds(Config::get('calisero.connect_timeout'), 3)
+            new UserAgentHttpClient(
+                new BaseHttpClient(
+                    self::seconds(Config::get('calisero.timeout'), 10),
+                    self::seconds(Config::get('calisero.connect_timeout'), 3)
+                ),
+                UserAgent::build()
             ),
             new HttpFactory(),
             new BearerTokenAuthProvider(self::apiKey()),
@@ -35,8 +41,9 @@ class ClientFactory
      * Create a Calisero SmsClient instance.
      *
      * @deprecated since 1.3.0, use make(): the SDK's SmsClient::create() fixes the
-     *             base URI and a 30 s timeout, so this ignores calisero.base_uri,
-     *             calisero.timeout and calisero.connect_timeout.
+     *             base URI, a 30 s timeout and its own User-Agent, so this ignores
+     *             calisero.base_uri, calisero.timeout and calisero.connect_timeout,
+     *             and sends no Laravel version.
      */
     public static function create(): SmsClient
     {

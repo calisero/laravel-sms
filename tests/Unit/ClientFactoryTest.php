@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Calisero\LaravelSms\Tests\Unit;
 
 use Calisero\LaravelSms\ClientFactory;
+use Calisero\LaravelSms\Http\UserAgentHttpClient;
 use Calisero\LaravelSms\SdkClient;
+use Calisero\LaravelSms\Support\UserAgent;
 use Calisero\LaravelSms\Tests\TestCase;
 use Calisero\Sms\Http\BaseHttpClient;
 use Calisero\Sms\Http\HttpClient;
@@ -76,6 +78,11 @@ class ClientFactoryTest extends TestCase
         yield 'not a number falls back to the defaults' => ['soon', 'later', 10, 3];
     }
 
+    public function test_it_sends_the_packages_user_agent(): void
+    {
+        $this->assertSame(UserAgent::build(), $this->httpClientOf(ClientFactory::make())->userAgent);
+    }
+
     #[DataProvider('unusableApiKeys')]
     public function test_it_refuses_to_build_a_client_without_an_api_key(mixed $apiKey): void
     {
@@ -115,18 +122,22 @@ class ClientFactoryTest extends TestCase
     /**
      * The SDK keeps the base URI and the timeouts private; read them back.
      *
-     * @return object{baseUri: string, curl: object{timeout: int, connectTimeout: int}}
+     * @return object{baseUri: string, userAgent: string, curl: object{timeout: int, connectTimeout: int}}
      */
     private function httpClientOf(SdkClient $client): object
     {
         $httpClient = $this->property($client->messages(), MessageService::class, 'httpClient');
         $this->assertInstanceOf(HttpClient::class, $httpClient);
 
-        $curl = $this->property($httpClient, HttpClient::class, 'httpClient');
+        $transport = $this->property($httpClient, HttpClient::class, 'httpClient');
+        $this->assertInstanceOf(UserAgentHttpClient::class, $transport);
+
+        $curl = $this->property($transport, UserAgentHttpClient::class, 'client');
         $this->assertInstanceOf(BaseHttpClient::class, $curl);
 
         return (object) [
             'baseUri' => $this->property($httpClient, HttpClient::class, 'baseUri'),
+            'userAgent' => $this->property($transport, UserAgentHttpClient::class, 'userAgent'),
             'curl' => (object) [
                 'timeout' => $this->property($curl, BaseHttpClient::class, 'timeout'),
                 'connectTimeout' => $this->property($curl, BaseHttpClient::class, 'connectTimeout'),
