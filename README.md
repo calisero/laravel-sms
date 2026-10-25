@@ -29,7 +29,8 @@ A first-class Laravel package that wraps the [Calisero PHP SDK](https://github.c
 
 | Package version | Laravel | PHP | Calisero PHP SDK | Calisero API |
 | --- | --- | --- | --- | --- |
-| `^1.3` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3` | 1.0.14 |
+| `^1.3.3` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3.2` | 1.0.16 |
+| `1.3.0` – `1.3.2` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3` | 1.0.14 |
 | `1.2.x` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.0` | 1.0.12 |
 | `1.0.x` – `1.1.x` | 12.x | 8.2 – 8.4 | `^2.0` | 1.0.12 |
 
@@ -118,6 +119,13 @@ $response = Calisero::sendSms([
 ]);
 ```
 
+- **`from`**: one of the account's approved sender IDs, written exactly as approved (the match is
+  case-sensitive). Any other sender is refused with a `ValidationException` ("The sender is invalid
+  or is not approved.") and nothing is sent. Leave it out for the default sender. See
+  [Sender ID Requirements](#sender-id-alphanumeric-requirements).
+- **`callback_url`**: an `http` or `https` address on the public Internet. Private, loopback and
+  link-local addresses (`localhost`, `127.0.0.1`, `192.168.x.x`…) are refused with the message, and
+  redirects are not followed. See [Webhook Handling](#webhook-handling).
 - **`schedule_at`**: the API reads it as `Y-m-d H:i:s` in Romania time (`Europe/Bucharest`) and
   refuses ISO 8601 strings such as `2026-10-05T10:00:00Z`. Pass a `DateTimeInterface` (a Carbon
   instance, `now()->addHour()`…) and the package converts it for you; a string is sent as is.
@@ -185,7 +193,7 @@ if ('verified' === $result->getData()->getStatus()) {
 }
 ```
 
-> **Note**: Either `brand` OR `template` is required when sending verification codes. The template must contain `{code}` placeholder. Codes are 6 characters and sent via SMS.
+> **Note**: Either `brand` OR `template` is required when sending verification codes. The template must contain `{code}` placeholder. Neither may contain links (web addresses, domains, emails or IP addresses): the code goes out from a shared sender. Codes are 6 characters and sent via SMS.
 > A verification code's SMS counts towards the account's [daily sending limit](#daily-sending-limit) like any other message.
 
 ### Using Notifications
@@ -317,6 +325,12 @@ class SendSmsRequest extends FormRequest
 
 Enable webhooks by setting `CALISERO_WEBHOOK_ENABLED=true`. The package will register a POST endpoint at `/calisero/webhook` (or your configured `CALISERO_WEBHOOK_PATH`).
 
+The callback URL must be an `http` or `https` address on the public Internet: the API refuses a
+message whose `callback_url` points to a private, loopback or link-local address, and it does not
+follow redirects, so the URL must answer directly. On a development machine (`APP_URL=http://localhost`),
+leave the webhook disabled or expose the application through a tunnel and set `APP_URL` to its
+public address. Queue workers and Artisan commands build the URL from `APP_URL`.
+
 #### Securing the Webhook (Query Token)
 If you also set `CALISERO_WEBHOOK_TOKEN=your-shared-secret`, the package will:
 - Automatically append `?token=your-shared-secret` to the injected `callback_url` sent to Calisero (only when you did not supply a custom `callback_url`).
@@ -423,7 +437,7 @@ To override, supply your own `callback_url` parameter.
 To disable injection, set `CALISERO_WEBHOOK_ENABLED=false` or omit the env variable.
 
 Edge cases:
-- If `app.url` is not set and the route helper fails, a root-relative path like `/calisero/webhook` is used.
+- If `app.url` is not set and the route helper fails, a root-relative path like `/calisero/webhook` is used. The API refuses such a URL, and the message with it: set `APP_URL` to the application's public address.
 - Passing either `callback_url` or `callbackUrl` prevents injection.
 
 Example (override):
@@ -491,7 +505,7 @@ php artisan calisero:verification:check +40712345678 123456
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `CALISERO_API_KEY` | **Yes** | - | Your Calisero API key from the dashboard |
-| `CALISERO_BASE_URI` | No | `https://rest.calisero.ro/api/v1` | Calisero API base URL |
+| `CALISERO_BASE_URI` | No | `https://rest.calisero.ro/api/v1` | Calisero API base URL; keep it `https://` |
 | `CALISERO_ACCOUNT_ID` | No | - | Your account ID, for `getAccount()`, `getBalance()` and `calisero:account` |
 | `CALISERO_TIMEOUT` | No | `10.0` | Request timeout in seconds (rounded up to whole seconds) |
 | `CALISERO_CONNECT_TIMEOUT` | No | `3.0` | Connection timeout in seconds (rounded up to whole seconds) |
@@ -513,13 +527,23 @@ The configuration file (`config/calisero.php`) allows you to customize:
 Requests are not retried automatically: the API takes no idempotency key, so retrying a send that
 timed out could deliver the message twice. Retry from your own job when it is safe to.
 
+### TLS
+
+The API accepts TLS 1.2 and TLS 1.3 only: from 1 November 2026 a connection that offers only
+TLS 1.0 or 1.1 is refused during the handshake, with no HTTP answer, and nothing is sent or billed.
+The package, through `calisero/calisero-php` 2.3.2, never offers less than TLS 1.2, so PHP's cURL
+must be built with an SSL library that supports it (any OpenSSL from 1.0.1 on).
+
+Keep `CALISERO_BASE_URI` on `https://`: a request to `http://` is redirected, and redirects are not
+followed.
+
 ### User-Agent
 
 Every request names the package and its version, PHP, Laravel and the platform, so Calisero can
 tell the package's requests apart and see which versions sent them:
 
 ```
-User-Agent: Calisero-SMS-Laravel/1.3.1 (PHP 8.5.3; Laravel 13.4.0; linux x86_64)
+User-Agent: Calisero-SMS-Laravel/1.3.3 (PHP 8.5.3; Laravel 13.4.0; linux x86_64)
 ```
 
 The header cannot be configured: a request whose `User-Agent` starts with `Calisero-SMS-Laravel/`
@@ -527,11 +551,10 @@ always comes from this package.
 
 ## Sender ID (Alphanumeric) Requirements
 
-Custom alphanumeric sender IDs (the `from` field) must be **pre‑approved by Calisero** before they can be used in production traffic. If you send a message with an unapproved sender:
-
-- The API may reject the request (validation / 422).
-- Or the gateway may substitute a default system sender / numeric originator.
-- Delivery performance and branding can be impacted if you skip approval.
+Custom alphanumeric sender IDs (the `from` field) must be **pre‑approved by Calisero** and written
+exactly as approved: the match is case-sensitive. A message with any other sender, unknown or not
+approved yet, is refused with a `ValidationException` (422, "The sender is invalid or is not
+approved.") and nothing is sent.
 
 Approval Guidelines:
 - Length: 3–11 characters (enforced by the `SenderId` validation rule).

@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "Calisero transactional SMS API",
-        "version": "1.0.15 - 25.10.2026",
-        "description": "API documentation for sending and managing transactional SMS messages via [Calisero](https://calisero.ro)."
+        "version": "1.0.16 - 25.10.2026",
+        "description": "API documentation for sending and managing transactional SMS messages via [Calisero](https://calisero.ro).\n\nThe API accepts HTTPS connections with TLS 1.2 or TLS 1.3 only. From 1 November 2026, a client that offers only TLS 1.0 or TLS 1.1 is refused during the TLS handshake: it gets no HTTP response, and nothing is sent or billed. Call `https://` directly: a request to `http://` is redirected, and most HTTP clients turn a redirected `POST` into a `GET` without its body."
     },
     "externalDocs": {
         "description": "Official PHP Library (GitHub)",

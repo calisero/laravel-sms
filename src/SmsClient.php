@@ -21,7 +21,7 @@ class SmsClient implements SmsClientContract
     /**
      * The package's version, sent in the User-Agent header; keep it in step with CHANGELOG.md.
      */
-    public const VERSION = '1.3.1';
+    public const VERSION = '1.3.3';
 
     /**
      * @param object $client Exposes messages(), accounts() and verifications() like the
@@ -38,11 +38,11 @@ class SmsClient implements SmsClientContract
      * Accepted params keys (user-land):
      *  - to (string, required) -> recipient
      *  - text (string, required) -> body
-     *  - from (string, optional) -> sender
+     *  - from (string, optional) -> sender, approved for the account and written exactly as approved
      *  - visible_body (string, optional)
      *  - validity (int, optional) -> hours
      *  - schedule_at (DateTimeInterface, or a 'Y-m-d H:i:s' string in Romania time, optional)
-     *  - callback_url (string, optional)
+     *  - callback_url (string, optional) -> a public http(s) address; private and loopback ones are refused
      *  - shorten_urls (bool, optional)
      *
      * @param array<string, mixed> $params
@@ -138,6 +138,7 @@ class SmsClient implements SmsClientContract
      * Send a verification code to a phone number.
      *
      * Accepted params keys: to (or phone, required), brand, template, expires_in (or expiresIn).
+     * Neither brand nor template may contain links (web addresses, domains, emails or IP addresses).
      *
      * @param array<string, mixed> $params
      * @throws \Exception
