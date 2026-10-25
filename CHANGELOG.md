@@ -4,6 +4,12 @@ All notable changes to `calisero/laravel-sms` will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Laravel Boost guidelines and skill.** `php artisan boost:install` (or `boost:update`) in an application that requires the package now offers its AI guidelines: `resources/boost/guidelines/core.blade.php`, the rules for using the package and the pitfalls of the Calisero API, and the `calisero-sms` skill (`resources/boost/skills/calisero-sms/SKILL.md`) for sending SMS and OTP codes, handling delivery reports and testing them.
+
+### Documentation
+- `AGENTS.md`: guidance for AI coding agents, both for integrating Calisero into a Laravel application with this package (configuration, sending, OTP, statuses, the delivery webhook and its events, errors and trace IDs, sandbox keys, the pitfalls of the API) and for working on the package.
+
 ## [1.3.1] - 2026-10-06
 
 Upgrading needs no code change.
