@@ -44,7 +44,9 @@ class SmsMessage
     }
 
     /**
-     * Set the sender ID.
+     * Set the sender ID: one of the account's approved senders, written exactly as
+     * approved (the match is case-sensitive). Any other is refused with a 422 and
+     * nothing is sent; leave it unset for the default sender.
      *
      * @param string $from
      * @return $this
@@ -142,7 +144,8 @@ class SmsMessage
 
     /**
      * Set the URL Calisero posts the delivery status to, instead of the package's
-     * webhook route.
+     * webhook route: an http or https address on the public Internet. Private,
+     * loopback and link-local addresses are refused, and redirects are not followed.
      *
      * @return $this
      */

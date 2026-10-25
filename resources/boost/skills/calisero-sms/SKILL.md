@@ -26,7 +26,7 @@ CALISERO_WEBHOOK_ENABLED=false
 CALISERO_WEBHOOK_TOKEN=      # a long random secret once the webhook is enabled
 ```
 
-Optional: `CALISERO_BASE_URI`, `CALISERO_TIMEOUT` (10 s), `CALISERO_CONNECT_TIMEOUT` (3 s), `CALISERO_WEBHOOK_PATH`
+Optional: `CALISERO_BASE_URI` (keep it `https://`), `CALISERO_TIMEOUT` (10 s), `CALISERO_CONNECT_TIMEOUT` (3 s), `CALISERO_WEBHOOK_PATH`
 (`calisero/webhook`), `CALISERO_CREDIT_LOW`, `CALISERO_CREDIT_CRITICAL`, `CALISERO_DAILY_LIMIT_LOW`. The config keys
 mirror them under `calisero.*` (`calisero.api_key`, `calisero.webhook.enabled`, `calisero.daily_limit.low_threshold`...).
 There is no default sender key: if the application needs one, add it to its own config and pass it as `from`.
@@ -201,7 +201,7 @@ synchronous listener loses the update.
 | `DailyLimitExceededException` | 429, `daily_limit_exceeded` | Nothing sent; the limit resets at midnight, Romania time (`getResetsAt()`, `getRetryAfter()`). Catch it before `RateLimitedException` |
 | `RateLimitedException` | 429 | More than 240 requests a minute: retry after `getRetryAfter()` seconds |
 | `ServerException` | 5xx | Calisero failed: the message may or may not exist |
-| `TransportException` | none | Timeout or connection failure: the message may have been sent |
+| `TransportException` | none | Timeout or connection failure: the message may have been sent. Failing on every request with a TLS handshake error: the server's cURL cannot do TLS 1.2, which the API requires |
 
 Every one extends `ApiException`: log `$e->getTraceId()` and look it up in the dashboard under Developers, Debug.
 

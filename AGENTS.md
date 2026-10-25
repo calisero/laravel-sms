@@ -27,7 +27,7 @@ filled from these environment variables:
 | --- | --- | --- |
 | `CALISERO_API_KEY` | `calisero.api_key` | Required. Never hard-code it or commit it; one key per environment |
 | `CALISERO_ACCOUNT_ID` | `calisero.account_id` | For `getAccount()`, `getBalance()` and `calisero:account` |
-| `CALISERO_BASE_URI` | `calisero.base_uri` | `https://rest.calisero.ro/api/v1` by default |
+| `CALISERO_BASE_URI` | `calisero.base_uri` | `https://rest.calisero.ro/api/v1` by default; keep it `https://` |
 | `CALISERO_TIMEOUT`, `CALISERO_CONNECT_TIMEOUT` | `calisero.timeout`, `calisero.connect_timeout` | Seconds, 10 and 3 by default |
 | `CALISERO_WEBHOOK_ENABLED` | `calisero.webhook.enabled` | Registers the webhook route and injects its URL as `callback_url` |
 | `CALISERO_WEBHOOK_PATH` | `calisero.webhook.path` | `calisero/webhook` by default |
@@ -215,6 +215,10 @@ API key or account ID) before any request. Log `$e->getTraceId()` with every fai
   `TransportException`: the SMS may have been sent and billed. Check `listMessages()` first. Do not let the queue
   retry a send on its own (`$tries`, `--tries`, `retryUntil()`): retry only after a refusal that means nothing was
   sent, a `RateLimitedException` or a `DailyLimitExceededException`.
+- **TLS**: the API accepts TLS 1.2 and 1.3 only (TLS 1.0 and 1.1 are refused from 1 November 2026, during the
+  handshake, with no HTTP answer: a `TransportException`). The package, through `calisero/calisero-php` 2.3.2, never
+  offers less than TLS 1.2. Keep `CALISERO_BASE_URI` on `https://`: `http://` is redirected and redirects are not
+  followed.
 - **OTP**: `brand` or a `template` holding `{code}`, neither with links. Each code is a billed SMS that counts towards
   the daily limit: throttle resends in your application (`RateLimiter`).
 

@@ -2,6 +2,25 @@
 
 All notable changes to `calisero/laravel-sms` will be documented in this file.
 
+## [1.3.3] - 2026-10-25
+
+Support for versions 1.0.15 and 1.0.16 of the Calisero API, through `calisero/calisero-php` 2.3.2. The API added validation rules and a TLS requirement but no field or endpoint, so the package's public API is unchanged. Upgrading needs no code change.
+
+### Changed
+- **TLS 1.2 at least.** Requires `calisero/calisero-php` `^2.3.2` (was `^2.3`), whose HTTP client never offers less than TLS 1.2: from 1 November 2026 the API refuses TLS 1.0 and 1.1 during the handshake, with no HTTP answer. PHP's cURL must be built with an SSL library that supports TLS 1.2, as any OpenSSL from 1.0.1 on does.
+- `resources/openApi/api-v1.json`: the API's 1.0.16 OpenAPI document, which states the TLS requirement.
+
+### Fixed
+- `SmsClient::VERSION` had stayed `1.3.1` in the 1.3.2 release, so 1.3.2 sent `Calisero-SMS-Laravel/1.3.1` in the `User-Agent` header and the test that matches it against this changelog failed. It is now `1.3.3`.
+
+### Documentation
+- The validation rules of API 1.0.15 in `README.md` and in the docblocks of `SmsMessage::from()`, `SmsMessage::callbackUrl()`, `sendSms()` and `sendVerification()`:
+  - `from` must be a sender approved for the account, written exactly as approved (case-sensitive); any other is refused with a `ValidationException` ("The sender is invalid or is not approved.") and nothing is sent. The "Sender ID Requirements" section no longer says the gateway may substitute a default sender.
+  - `callback_url` must be an http or https address on the public Internet: private, loopback and link-local addresses are refused, and redirects are not followed. The webhook section explains what to do on a development machine, and warns that the root-relative fallback used without `APP_URL` is refused.
+  - The `brand` and the `template` of a verification may not contain links.
+- The TLS requirement of API 1.0.16, and why `CALISERO_BASE_URI` must stay `https://`, in `README.md` (new "TLS" section), `AGENTS.md` and the Laravel Boost guidelines and skill.
+- `README.md`: the requirements table lists 1.3.3 with `calisero/calisero-php` `^2.3.2` and API 1.0.16.
+
 ## [1.3.2] - 2026-10-25
 
 ### Added
