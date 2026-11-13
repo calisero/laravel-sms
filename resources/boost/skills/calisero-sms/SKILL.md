@@ -121,7 +121,7 @@ try {
     $verified = Calisero::checkVerification(['to' => $phone, 'code' => $request->input('code')])
         ->getData()->getStatus() === 'verified';
 } catch (ValidationException $e) {
-    // wrong or expired code, or too many attempts: $e->getMessage() says which
+    // wrong, expired or already used code, or too many attempts: $e->getMessage() says which
     $verified = false;
 } catch (NotFoundException $e) {
     // no verification for this number: send a new code
@@ -130,7 +130,9 @@ try {
 ```
 
 `brand` or `template` is required; a template must contain `{code}`, and neither may contain links. Each code counts
-towards the daily sending limit.
+towards the daily sending limit. A code validates only once: checking one that already verified throws
+`ValidationException` ("The validation code has already been used.") rather than succeeding again, so persist the
+first success — a resubmitted form or a retried job would otherwise fail — and send a new code to verify again.
 
 ## 4. Message status
 

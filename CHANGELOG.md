@@ -2,6 +2,35 @@
 
 All notable changes to `calisero/laravel-sms` will be documented in this file.
 
+## [1.3.4] - 2026-11-13
+
+Support for version 1.0.17 of the Calisero API. Its changes are all on the API's side: no field or endpoint was
+added, so the package's code and public API are unchanged and upgrading needs no code change. One of them changes
+what an application sees, though: a verification code now validates only once.
+
+### Changed
+- **A verification code validates only once.** `Calisero::checkVerification()` used to succeed again for a code that
+  had already verified; the API now refuses it with a 422, which the SDK raises as a
+  `Calisero\Sms\Exceptions\ValidationException` ("The validation code has already been used.", on the `code` field).
+  An application that checks the same code twice — a resubmitted form, a retried job, a double-tapped button — must
+  record the first success itself, and send a new code to verify the same number again.
+- `resources/openApi/api-v1.json`: the API's 1.0.17 OpenAPI document.
+
+### Documentation
+- The single-use rule in `README.md`, `AGENTS.md`, the Laravel Boost guidelines and skill, and the docblock of
+  `SmsClient::checkVerification()`.
+- **URL shortening in the sandbox**: test messages (a sandbox account or a sandbox API key) keep their links exactly
+  as written and come back with an empty `getShortenedUrls()`, in `README.md`, `AGENTS.md` and the docblocks of
+  `SmsClient::sendSms()` and `SmsMessage::shortenUrls()`. Do not assert on shortened links against the sandbox.
+- `README.md`: the requirements table lists 1.3.4 with `calisero/calisero-php` `^2.3.2` and API 1.0.17.
+
+The refusal of a sender that is not approved, which 1.0.17 gives its own response in the OpenAPI document, was
+already documented here from API 1.0.15 in 1.3.3 and needed no change.
+
+### Tests
+- A code already used among the refusals of `checkVerification()`: the `ValidationException`, its 422 status and its
+  `code` field reach the caller untouched.
+
 ## [1.3.3] - 2026-10-25
 
 Support for versions 1.0.15 and 1.0.16 of the Calisero API, through `calisero/calisero-php` 2.3.2. The API added validation rules and a TLS requirement but no field or endpoint, so the package's public API is unchanged. Upgrading needs no code change.

@@ -87,7 +87,8 @@ listener. `SmsMessage::idempotencyKey()` is deprecated and has no effect.
 ### OTP: send and validate
 
 Calisero generates the code (6 characters, letters and digits, case-insensitive), sends it and checks it: never
-generate or store it yourself.
+generate or store it yourself. A code validates only once: record the first success yourself, because checking it
+again is refused rather than succeeding a second time.
 
 ```php
 use Calisero\Sms\Exceptions\ValidationException;
@@ -99,7 +100,7 @@ try {
     $verification = Calisero::checkVerification(['to' => $phone, 'code' => $input])->getData();
     // $verification->getStatus() === 'verified'
 } catch (ValidationException $e) {
-    // wrong or expired code, or too many attempts (422): $e->getMessage() says which
+    // wrong, expired or already used code, or too many attempts (422): $e->getMessage() says which
 }
 ```
 
@@ -197,6 +198,9 @@ API key or account ID) before any request. Log `$e->getTraceId()` with every fai
   ț) or emoji (UCS-2). A longer text is split into parts, each billed as one SMS (`getParts()`); the text takes at
   most 1600 characters. When cost matters, a text without diacritics keeps 160-character parts: an option, not a
   rule.
+- **URL shortening**: `shorten_urls` returns the short links on the message. Test messages (a sandbox account or a
+  sandbox API key) are the exception: their links go out as written and `getShortenedUrls()` comes back empty, so do
+  not assert on shortened links in tests against the sandbox.
 - **Sender ID**: alphanumeric, at most 11 characters, approved for the account and written exactly as approved;
   otherwise 422 and nothing is sent. Leave `from` out for the default sender. It cannot receive replies. Never take it
   from user input. OTP codes go out from the shared "Verify" sender and need no sender of your own.
@@ -220,7 +224,9 @@ API key or account ID) before any request. Log `$e->getTraceId()` with every fai
   offers less than TLS 1.2. Keep `CALISERO_BASE_URI` on `https://`: `http://` is redirected and redirects are not
   followed.
 - **OTP**: `brand` or a `template` holding `{code}`, neither with links. Each code is a billed SMS that counts towards
-  the daily limit: throttle resends in your application (`RateLimiter`).
+  the daily limit: throttle resends in your application (`RateLimiter`). **A code validates only once**: checking one
+  that already verified raises a `ValidationException` ("The validation code has already been used.") instead of
+  succeeding again, so persist the first success and send a new code to verify the same number again.
 
 ## Working on this library
 

@@ -64,6 +64,46 @@ class VerificationTest extends TestCase
         ]);
     }
 
+    /**
+     * API 1.0.17: a code validates only once. The second check of a code that already
+     * verified is refused with a 422 rather than succeeding again, and the package lets
+     * that refusal through to the caller untouched.
+     */
+    public function test_check_verification_rejects_a_code_that_was_already_used(): void
+    {
+        $mockVerificationService = Mockery::mock(\Calisero\Sms\Services\VerificationService::class);
+
+        $mockVerificationService->shouldReceive('validate')
+            ->once()
+            ->andThrow(new \Calisero\Sms\Exceptions\ValidationException(
+                message: 'The validation code has already been used.',
+                statusCode: 422,
+                validationErrors: ['code' => ['The validation code has already been used.']],
+            ));
+
+        $mockSdkClient = Mockery::mock(\Calisero\Sms\SmsClient::class);
+        $mockSdkClient->shouldReceive('verifications')->andReturn($mockVerificationService);
+
+        $wrapperClient = new \Calisero\LaravelSms\SmsClient($mockSdkClient);
+        $this->app->instance(\Calisero\LaravelSms\Contracts\SmsClient::class, $wrapperClient);
+
+        try {
+            Calisero::checkVerification([
+                'to' => TestPhones::DEFAULT,
+                'code' => '123456',
+            ]);
+            $this->fail('Expected a ValidationException for a code that was already used.');
+        } catch (\Throwable $e) {
+            $this->assertInstanceOf(\Calisero\Sms\Exceptions\ValidationException::class, $e);
+            $this->assertSame('The validation code has already been used.', $e->getMessage());
+            $this->assertSame(422, $e->getStatusCode());
+            $this->assertSame(
+                ['The validation code has already been used.'],
+                $e->getValidationErrors()['code'] ?? null
+            );
+        }
+    }
+
     public function test_check_verification_valid_code(): void
     {
         $mockVerificationService = Mockery::mock(\Calisero\Sms\Services\VerificationService::class);

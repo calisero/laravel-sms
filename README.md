@@ -29,7 +29,8 @@ A first-class Laravel package that wraps the [Calisero PHP SDK](https://github.c
 
 | Package version | Laravel | PHP | Calisero PHP SDK | Calisero API |
 | --- | --- | --- | --- | --- |
-| `^1.3.3` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3.2` | 1.0.16 |
+| `^1.3.4` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3.2` | 1.0.17 |
+| `1.3.3` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3.2` | 1.0.16 |
 | `1.3.0` – `1.3.2` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.3` | 1.0.14 |
 | `1.2.x` | 12.x, 13.x | 8.2 – 8.5 (Laravel 13 requires PHP 8.3+) | `^2.0` | 1.0.12 |
 | `1.0.x` – `1.1.x` | 12.x | 8.2 – 8.4 | `^2.0` | 1.0.12 |
@@ -130,7 +131,9 @@ $response = Calisero::sendSms([
   refuses ISO 8601 strings such as `2026-10-05T10:00:00Z`. Pass a `DateTimeInterface` (a Carbon
   instance, `now()->addHour()`…) and the package converts it for you; a string is sent as is.
 - **`shorten_urls`**: Calisero replaces the `http://` and `https://` links of the text with short ones
-  before sending. The short links, and how many times each was opened, come back on the message:
+  before sending. The short links, and how many times each was opened, come back on the message.
+  Test messages (a sandbox account or a sandbox API key) are the exception: they keep their links
+  exactly as written and come back with an empty `getShortenedUrls()`.
 
 ```php
 foreach ($response->getData()->getShortenedUrls() as $link) {
@@ -192,6 +195,11 @@ if ('verified' === $result->getData()->getStatus()) {
     echo "Verification failed!";
 }
 ```
+
+> **A code validates only once.** Checking a code that already verified is refused with a
+> `ValidationException` ("The validation code has already been used."), it does not succeed again.
+> Record the first success yourself: a form resubmitted, a retried job or a double-tapped button
+> would otherwise fail the second time. Send a new code to verify the same number again.
 
 > **Note**: Either `brand` OR `template` is required when sending verification codes. The template must contain `{code}` placeholder. Neither may contain links (web addresses, domains, emails or IP addresses): the code goes out from a shared sender. Codes are 6 characters and sent via SMS.
 > A verification code's SMS counts towards the account's [daily sending limit](#daily-sending-limit) like any other message.

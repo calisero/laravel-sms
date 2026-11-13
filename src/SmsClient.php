@@ -21,7 +21,7 @@ class SmsClient implements SmsClientContract
     /**
      * The package's version, sent in the User-Agent header; keep it in step with CHANGELOG.md.
      */
-    public const VERSION = '1.3.3';
+    public const VERSION = '1.3.4';
 
     /**
      * @param object $client Exposes messages(), accounts() and verifications() like the
@@ -43,7 +43,7 @@ class SmsClient implements SmsClientContract
      *  - validity (int, optional) -> hours
      *  - schedule_at (DateTimeInterface, or a 'Y-m-d H:i:s' string in Romania time, optional)
      *  - callback_url (string, optional) -> a public http(s) address; private and loopback ones are refused
-     *  - shorten_urls (bool, optional)
+     *  - shorten_urls (bool, optional) -> test messages keep their links and return none shortened
      *
      * @param array<string, mixed> $params
      * @return \Calisero\Sms\Dto\CreateMessageResponse
@@ -163,6 +163,10 @@ class SmsClient implements SmsClientContract
      * Check/verify a verification code.
      *
      * Accepted params keys: to (or phone, required), code (required).
+     *
+     * A code validates only once: checking one that already verified is refused with a
+     * ValidationException ("The validation code has already been used.") instead of succeeding
+     * again, so record the first success yourself and send a new code to verify the number again.
      *
      * @param array<string, mixed> $params
      * @throws \Exception

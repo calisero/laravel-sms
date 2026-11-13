@@ -108,6 +108,9 @@ class SmsMessage
      * Have Calisero shorten the http:// and https:// links of the content; the short
      * links and their click counts come back in the message's shortened URLs.
      *
+     * Test messages (a sandbox account or a sandbox API key) keep their links as written
+     * and come back with no shortened URLs.
+     *
      * @return $this
      */
     public function shortenUrls(bool $shortenUrls = true): static
