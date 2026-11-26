@@ -201,8 +201,13 @@ API key or account ID) before any request. Log `$e->getTraceId()` with every fai
 - **URL shortening**: `shorten_urls` returns the short links on the message. Test messages (a sandbox account or a
   sandbox API key) are the exception: their links go out as written and `getShortenedUrls()` comes back empty, so do
   not assert on shortened links in tests against the sandbox.
-- **Sender ID**: alphanumeric, at most 11 characters, approved for the account and written exactly as approved;
-  otherwise 422 and nothing is sent. Leave `from` out for the default sender. It cannot receive replies. Never take it
+- **Approved link domains**: on an account restricted to its approved link domains (Messages › Link domains in the
+  dashboard), every link in the text, with or without `https://`, must go to one of them. Any other is refused with a
+  `ValidationException` whose `getValidationErrors()['body']` names the domain: nothing is sent or billed, sandbox API
+  key included. A scheduled message whose domain is rejected or revoked before it is due fails with the error code
+  1005. Never put a link from user input in a message without knowing its domain is approved.
+- **Sender ID**: alphanumeric, at most 11 characters, approved for the account and written exactly as approved; a
+  sender that is unknown, still pending, rejected or another account's gets a 422 on `sender` and nothing is sent. Leave `from` out for the default sender. It cannot receive replies. Never take it
   from user input. OTP codes go out from the shared "Verify" sender and need no sender of your own.
 - **Scheduling**: the API reads `schedule_at` as `Y-m-d H:i:s`, Romania time (Europe/Bucharest). Pass a Carbon
   instance and the package converts it; a string is sent as is and must already be in that format and time zone.
@@ -213,16 +218,17 @@ API key or account ID) before any request. Log `$e->getTraceId()` with every fai
   `APP_URL` in queue workers and commands) and must be public http(s): on `localhost` or a private address, the API
   refuses the message. Leave the webhook disabled in local development or use a tunnel.
 - **429 has two meanings**: the request rate limit (240 requests a minute; retry after `getRetryAfter()`) and the
-  daily sending limit (`DailyLimitExceededException`: nothing sent, retrying the same day will not help; it resets at
+  daily sending limit (50 messages a day for a new account, until Calisero raises it; `DailyLimitExceededException`: nothing sent, retrying the same day will not help; it resets at
   midnight, Romania time; in a job, `$this->release($e->getRetryAfter() ?? 3600)`).
 - **No idempotency key**: the package never retries, and you should not retry a send blindly after a timeout or a
   `TransportException`: the SMS may have been sent and billed. Check `listMessages()` first. Do not let the queue
   retry a send on its own (`$tries`, `--tries`, `retryUntil()`): retry only after a refusal that means nothing was
   sent, a `RateLimitedException` or a `DailyLimitExceededException`.
 - **TLS**: the API accepts TLS 1.2 and 1.3 only (TLS 1.0 and 1.1 are refused from 1 November 2026, during the
-  handshake, with no HTTP answer: a `TransportException`). The package, through `calisero/calisero-php` 2.3.2, never
-  offers less than TLS 1.2. Keep `CALISERO_BASE_URI` on `https://`: `http://` is redirected and redirects are not
-  followed.
+  handshake, with no HTTP answer: a `TransportException`). The package, through `calisero/calisero-php`, never
+  offers less than TLS 1.2, and a cURL that cannot use it throws a `TransportException` before anything is sent. Keep
+  `CALISERO_BASE_URI` on `https://`: `http://` is redirected, redirects are not followed, and the request fails with
+  an `ApiException` carrying the `3xx`.
 - **OTP**: `brand` or a `template` holding `{code}`, neither with links. Each code is a billed SMS that counts towards
   the daily limit: throttle resends in your application (`RateLimiter`). **A code validates only once**: checking one
   that already verified raises a `ValidationException` ("The validation code has already been used.") instead of
