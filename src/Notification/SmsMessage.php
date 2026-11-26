@@ -31,7 +31,9 @@ class SmsMessage
     }
 
     /**
-     * Set the message content.
+     * Set the message content. On an account restricted to its approved link
+     * domains, every link in it must go to one of them: any other is refused with
+     * a 422 on `body`, and nothing is sent.
      *
      * @param string $content
      * @return $this

@@ -51,7 +51,7 @@ Log::info('SMS sent', ['id' => $sms->getId(), 'parts' => $sms->getParts(), 'trac
 
 | Key (snake_case or camelCase) | Meaning |
 | --- | --- |
-| `to`, `text` | Required: recipient in E.164, text up to 1600 characters |
+| `to`, `text` | Required: recipient in E.164, text up to 1600 characters. On an account restricted to its approved link domains, its links must go to them |
 | `from` | An approved sender ID; omit for the default sender |
 | `schedule_at` | A Carbon/`DateTimeInterface` (converted to Romania time) or a `Y-m-d H:i:s` string already in Romania time |
 | `validity` | Hours |
@@ -199,7 +199,7 @@ synchronous listener loses the update.
 | `UnauthorizedException` | 401 | Wrong or missing API key: fix the configuration |
 | `ForbiddenException` | 403 | The key may not do this (e.g. delete a message already sent) |
 | `NotFoundException` | 404 | Unknown message or verification ID |
-| `ValidationException` | 422 | `getValidationErrors()` lists the fields: invalid number, unapproved sender, wrong OTP code... |
+| `ValidationException` | 422 | `getValidationErrors()` lists the fields: invalid number, unapproved sender (`sender`), link to a domain not approved (`body`), wrong or already used OTP code... |
 | `DailyLimitExceededException` | 429, `daily_limit_exceeded` | Nothing sent; the limit resets at midnight, Romania time (`getResetsAt()`, `getRetryAfter()`). Catch it before `RateLimitedException` |
 | `RateLimitedException` | 429 | More than 240 requests a minute: retry after `getRetryAfter()` seconds |
 | `ServerException` | 5xx | Calisero failed: the message may or may not exist |
@@ -261,6 +261,7 @@ no billing, never counted in the daily limit; the message is `delivered` at once
 - [ ] Text length checked: 160 GSM-7 characters a part, 70 with Romanian diacritics or emoji, each part billed;
   writing without diacritics keeps 160-character parts when cost matters (an option, not a rule).
 - [ ] `from` only an approved sender (at most 11 alphanumeric characters, case-sensitive), or omitted.
+- [ ] Links in the text only to the account's approved link domains, when the account is restricted to them.
 - [ ] `schedule_at` passed as a Carbon instance.
 - [ ] Delivery listeners queued and idempotent on message ID + status; webhook disabled locally.
 - [ ] No automatic retries of sends; `DailyLimitExceededException` handled apart from `RateLimitedException`.

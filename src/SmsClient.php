@@ -37,7 +37,7 @@ class SmsClient implements SmsClientContract
      *
      * Accepted params keys (user-land):
      *  - to (string, required) -> recipient
-     *  - text (string, required) -> body
+     *  - text (string, required) -> body; on an account restricted to its approved link domains, its links must go to them
      *  - from (string, optional) -> sender, approved for the account and written exactly as approved
      *  - visible_body (string, optional)
      *  - validity (int, optional) -> hours

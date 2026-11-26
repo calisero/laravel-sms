@@ -96,7 +96,7 @@
             "post": {
                 "summary": "Create a new message",
                 "operationId": "createMessage",
-                "description": "Sends an SMS now, or at `schedule_at`.\n\n**Daily sending limit.** Every account has its own daily limit; a new account starts with {new_account_daily_limit} and keeps it until we raise it on request. Each real message the account creates counts once, whatever its number of parts: the OTP codes of `POST /verifications` too, and a scheduled message on the day it is created. Test messages (a sandbox account or a sandbox API key) never count and are never refused. The day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created message carries `X-Daily-Limit` and `X-Daily-Remaining` (what is left today, after this message). Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: nothing is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute. Every answer carries `X-RateLimit-Limit` and `X-RateLimit-Remaining`; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.\n\n**Sender.** `sender` must be a sender approved for your account, written exactly as approved. A sender that is unknown, still pending, rejected or another account's is refused with `422` and `\"The sender is invalid or is not approved.\"` on the `sender` field: nothing is sent and nothing is billed. Leave `sender` out to use the default sender.",
+                "description": "Sends an SMS now, or at `schedule_at`.\n\n**Daily sending limit.** Every account has its own daily limit; a new account starts with 50 messages a day and keeps it until we raise it on request. Each real message the account creates counts once, whatever its number of parts: the OTP codes of `POST /verifications` too, and a scheduled message on the day it is created. Test messages (a sandbox account or a sandbox API key) never count and are never refused. The day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created message carries `X-Daily-Limit` and `X-Daily-Remaining` (what is left today, after this message). Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: nothing is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute. Every answer carries `X-RateLimit-Limit` and `X-RateLimit-Remaining`; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.\n\n**Sender.** `sender` must be a sender approved for your account, written exactly as approved. A sender that is unknown, still pending, rejected or another account's is refused with `422` and `\"The sender is invalid or is not approved.\"` on the `sender` field: nothing is sent and nothing is billed. Leave `sender` out to use the default sender.\n\n**Links.** An account restricted to its approved link domains may link only to them: every link in `body`, with or without `https://` (`www.example.ro`, `example.ro/path`), must go to a domain approved for the account, exactly, or as one of its subdomains when they were approved too. Links Calisero shortens are checked by the address they open. Any other link is refused with `422` on the `body` field, its message naming the refused domain: nothing is created and nothing is billed, sandbox included. Ask for a domain in the dashboard (Messages › Link domains). A scheduled message whose domain is rejected or revoked before it is due fails, with the error code 1005. See [Approved link domains](#link-domains).",
                 "tags": [
                     "Messages"
                 ],
@@ -879,7 +879,7 @@
             "post": {
                 "summary": "Create a new verification request",
                 "operationId": "createVerification",
-                "description": "Generates a code, sends it by SMS to `phone` and keeps it for `PUT /verifications/validate`.\n\n**Daily sending limit.** The code's SMS counts towards the account's daily limit like any message of `POST /messages` (a new account starts with {new_account_daily_limit}); the day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created verification carries `X-Daily-Limit` and `X-Daily-Remaining`. Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: no code is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.",
+                "description": "Generates a code, sends it by SMS to `phone` and keeps it for `PUT /verifications/validate`.\n\n**Daily sending limit.** The code's SMS counts towards the account's daily limit like any message of `POST /messages` (a new account starts with 50 messages a day); the day ends at midnight, Romania time (Europe/Bucharest). While the account has a limit, the answer to a created verification carries `X-Daily-Limit` and `X-Daily-Remaining`. Once the limit is reached the answer is `429` with `\"code\": \"daily_limit_exceeded\"`, `Retry-After` and `X-Daily-Remaining: 0` until midnight, Romania time: no code is sent and nothing is billed. See [Daily sending limit](#daily-limit).\n\n**Request rate limit.** Separately, each API user may make 240 requests a minute; above the rate the answer is `429` with `{\"message\": \"Too Many Attempts.\", \"trace_id\": \"…\"}`, no `code`, plus `Retry-After` and `X-RateLimit-Reset`.",
                 "tags": [
                     "Verifications (OTP & 2FA)"
                 ],
@@ -1194,20 +1194,38 @@
                 }
             },
             "422CreateMessageValidationError": {
-                "description": "The message failed validation and was not created: nothing is sent and nothing is billed. `errors` names each field at fault. Besides a missing or malformed field (`recipient`, `body`, `schedule_at`, `callback_url`…), this is the answer to a `sender` that is not approved for your account: unknown, still pending, rejected, or another account's. It is refused with `\"The sender is invalid or is not approved.\"` on the `sender` field. Leave `sender` out, or send `null`, to use the default sender until yours is approved.",
+                "description": "The message failed validation and was not created: nothing is sent and nothing is billed. `errors` names each field at fault. Besides a missing or malformed field (`recipient`, `body`, `schedule_at`, `callback_url`…), this is the answer to a `sender` that is not approved for your account: unknown, still pending, rejected, or another account's. It is refused with `\"The sender is invalid or is not approved.\"` on the `sender` field. Leave `sender` out, or send `null`, to use the default sender until yours is approved. A link to a domain that is not approved for the account is refused this way too, on the `body` field, with a message that names the domain.",
                 "content": {
                     "application/json": {
                         "schema": {
                             "$ref": "#/components/schemas/ValidationErrorResponse"
                         },
-                        "example": {
-                            "message": "The sender is invalid or is not approved.",
-                            "errors": {
-                                "sender": [
-                                    "The sender is invalid or is not approved."
-                                ]
+                        "examples": {
+                            "sender_not_approved": {
+                                "summary": "Sender not approved",
+                                "value": {
+                                    "message": "The sender is invalid or is not approved.",
+                                    "errors": {
+                                        "sender": [
+                                            "The sender is invalid or is not approved."
+                                        ]
+                                    },
+                                    "trace_id": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                                }
                             },
-                            "trace_id": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                            "link_domain_not_approved": {
+                                "summary": "A link to a domain that is not approved for the account",
+                                "x-tab": "link",
+                                "value": {
+                                    "message": "Links to oix.ro-inx.live are not allowed for this account: it is not one of its approved link domains.",
+                                    "errors": {
+                                        "body": [
+                                            "Links to oix.ro-inx.live are not allowed for this account: it is not one of its approved link domains."
+                                        ]
+                                    },
+                                    "trace_id": "9b80eef1-49d4-4502-85a8-febb68cc11a7"
+                                }
+                            }
                         }
                     }
                 }
@@ -1287,7 +1305,7 @@
                     },
                     "body": {
                         "type": "string",
-                        "description": "Text body of the message",
+                        "description": "Text body of the message. On an account restricted to its approved link domains, every link in it must go to one of them: any other is refused with 422 on this field (see Approved link domains).",
                         "maxLength": 1600
                     },
                     "visible_body": {

@@ -8,6 +8,7 @@ use Calisero\LaravelSms\SmsClient;
 use Calisero\LaravelSms\Tests\Doubles\FakeSdkClient;
 use Calisero\LaravelSms\Tests\Support\TestPhones;
 use Calisero\LaravelSms\Tests\TestCase;
+use Calisero\Sms\Exceptions\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -183,6 +184,34 @@ class SmsClientTest extends TestCase
         $this->expectExceptionMessage('SDK exploded');
 
         $this->client->sendSms(['to' => TestPhones::DEFAULT, 'text' => 'Hello']);
+    }
+
+    /**
+     * Approved link domains: on an account restricted to them, a link to any other
+     * domain is refused with a 422 on `body`, and the package lets that refusal
+     * through to the caller untouched.
+     */
+    public function test_it_lets_the_refusal_of_a_link_domain_through(): void
+    {
+        $refusal = 'Links to example.com are not allowed for this account: it is not one of its approved link domains.';
+        $this->sdk->messageService->createException = new ValidationException(
+            $refusal,
+            0,
+            null,
+            422,
+            'trace-422',
+            [],
+            ['body' => [$refusal]]
+        );
+
+        try {
+            $this->client->sendSms(['to' => TestPhones::DEFAULT, 'text' => 'Track it at https://example.com/orders/1001']);
+            $this->fail('Expected a ValidationException for a link domain that is not approved.');
+        } catch (ValidationException $e) {
+            $this->assertSame($refusal, $e->getMessage());
+            $this->assertSame(422, $e->getStatusCode());
+            $this->assertSame([$refusal], $e->getValidationErrors()['body'] ?? null);
+        }
     }
 
     public function test_it_returns_the_account_credit_as_the_balance(): void

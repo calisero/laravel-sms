@@ -124,6 +124,25 @@ class ConsoleCommandsTest extends TestCase
             ->assertFailed();
     }
 
+    public function test_the_test_command_names_a_link_domain_that_is_not_approved(): void
+    {
+        $refusal = 'Links to example.com are not allowed for this account: it is not one of its approved link domains.';
+        $this->sdk->messageService->createException = new ValidationException(
+            $refusal,
+            0,
+            null,
+            422,
+            self::TRACE_ID,
+            [],
+            ['body' => [$refusal]]
+        );
+
+        $this->artisan('calisero:sms:test', ['to' => TestPhones::DEFAULT, '--text' => 'See https://example.com'])
+            ->expectsOutputToContain('✗ API validation error: ' . $refusal)
+            ->expectsTable(['Field', 'Errors'], [['body', $refusal]])
+            ->assertFailed();
+    }
+
     public function test_the_test_command_sends_the_validity_in_hours(): void
     {
         $this->artisan('calisero:sms:test', ['to' => TestPhones::DEFAULT, '--validity' => '48'])->assertSuccessful();
